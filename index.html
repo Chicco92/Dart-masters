@@ -1,432 +1,850 @@
 <!DOCTYPE html>
-<html lang="it" class="h-full bg-slate-950 text-slate-100">
+<html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Darts Master Arena</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Darts Master & Scorer - Realtime DB</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Canvas Confetti -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
+  <!-- Canvas Confetti for Victory & High Score Celebrations -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            arena: {
+              950: '#070a12',
+              900: '#0d1527',
+              800: '#1b253b',
+              700: '#2d3b55'
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    @keyframes zoomBounce {
-      0% { transform: scale(0.2); opacity: 0; }
-      25% { transform: scale(1.15); opacity: 1; }
-      45% { transform: scale(0.95); opacity: 1; }
-      65% { transform: scale(1.05); opacity: 1; }
-      85% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(1.05); opacity: 0; }
-    }
-    .celebrate-anim {
-      animation: zoomBounce 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    .glass-panel {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    button {
-      touch-action: manipulation;
+    body {
+      background: radial-gradient(circle at 50% 5%, #142247 0%, #060911 100%);
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
       user-select: none;
-      -webkit-user-select: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .tap-press:active {
+      transform: scale(0.95);
+    }
+    .glow-gold {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.45);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    }
+    .pulse-target {
+      animation: targetPulse 1.5s infinite;
+    }
+    @keyframes targetPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .celebrate-zoom {
+      animation: zoomInBounce 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes zoomInBounce {
+      0% {
+        opacity: 0;
+        transform: scale(0.2) rotate(-8deg);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.15) rotate(3deg);
+      }
+      70% {
+        transform: scale(0.95) rotate(-1deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
     }
   </style>
 </head>
-<body class="h-full flex flex-col antialiased selection:bg-amber-500 selection:text-black">
+<body class="antialiased flex flex-col justify-between min-h-screen">
 
-  <!-- OVERLAY CELEBRAZIONE 180 / 170 (Solo Numero Gigante + Fuochi) -->
-  <div id="celebrationOverlay" class="fixed inset-0 pointer-events-none z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <canvas id="fireworksCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-    <div id="celebrationNumber" class="relative z-10 text-8xl sm:text-9xl md:text-[14rem] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 drop-shadow-[0_10px_40px_rgba(245,158,11,0.85)] select-none">
-      <!-- 180 o 170 -->
-    </div>
-  </div>
+  <!-- TOP HEADER -->
+  <header class="border-b border-gray-800/80 bg-gray-950/80 backdrop-blur-md sticky top-0 z-40 px-4 py-2.5">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="app.navigate('home')">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-amber-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="target" class="w-5 h-5 text-gray-950 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-amber-300 to-red-400">DARTS MASTER</h1>
+          <p class="text-[10px] text-gray-400 font-medium tracking-tight">Scorer Istantaneo & Realtime Cloud</p>
+        </div>
+      </div>
 
-  <!-- HEADER ORIGINALE -->
-  <header class="w-full bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-    <div class="flex items-center gap-3 cursor-pointer" onclick="app.showHome()">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-        <i data-lucide="target" class="w-5 h-5 text-white"></i>
+      <!-- Realtime DB status and actions -->
+      <div class="flex items-center gap-2">
+        <div id="fbBadge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-semibold text-emerald-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Firebase Realtime
+        </div>
+        <button id="soundToggleBtn" onclick="sound.toggle()" class="p-2 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-gray-300 transition-colors" title="Audio On/Off">
+          <i id="soundIcon" data-lucide="volume-2" class="w-4 h-4 text-emerald-400"></i>
+        </button>
+        <button onclick="app.navigate('stats')" class="p-2 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-gray-300 transition-colors" title="Statistiche & Storico">
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-blue-400"></i>
+        </button>
       </div>
-      <div>
-        <h1 class="text-lg font-black tracking-wider uppercase text-white flex items-center gap-1.5 leading-none">
-          Darts Master <span class="text-amber-400 text-xs px-1.5 py-0.5 rounded bg-amber-400/10 font-bold border border-amber-400/20">PRO</span>
-        </h1>
-        <p class="text-[10px] text-slate-400 font-medium">Training & Multiplayer Arena</p>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <div id="firebaseBadge" class="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Firebase Realtime</span>
-      </div>
-      <button onclick="app.showHome()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1">
-        <i data-lucide="home" class="w-4 h-4"></i>
-        <span class="hidden xs:inline">Menu</span>
-      </button>
     </div>
   </header>
 
-  <!-- CONTENITORE PRINCIPALE -->
-  <main class="flex-1 overflow-y-auto p-3 sm:p-4 max-w-4xl w-full mx-auto flex flex-col justify-start">
+  <!-- CELEBRATION OVERLAY (PURE GIANT NUMBER + FIREWORKS CANVAS) -->
+  <div id="celebrationOverlay" class="fixed inset-0 z-50 pointer-events-none hidden flex items-center justify-center overflow-hidden">
+    <canvas id="fireworksCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
     
-    <!-- 1. HOME SCREEN -->
-    <section id="screenHome" class="space-y-6 my-auto py-6">
-      <div class="text-center space-y-2">
-        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-          Scegli la tua <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-500">Modalità</span>
-        </h2>
-        <p class="text-sm text-slate-400 max-w-md mx-auto">
-          Allenati con bersagli casuali e statistiche, oppure sfida gli amici nelle modalità classiche e di percorso.
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <!-- Allenamento -->
-        <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between group hover:border-amber-500/50 transition-all">
-          <div class="space-y-3">
-            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-              <i data-lucide="crosshair" class="w-6 h-6"></i>
-            </div>
-            <h3 class="text-xl font-bold text-white">Allenamento Singolo</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
-              Migliora la tua precisione. Generatore di bersagli casuali o tiro libero con calcolo istantaneo della media a 3 dardi e salvataggio statistiche opzionale.
-            </p>
-          </div>
-          <button onclick="app.showTrainingSetup()" class="mt-6 w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all">
-            <span>Inizia Allenamento</span>
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-
-        <!-- Partita -->
-        <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between group hover:border-emerald-500/50 transition-all">
-          <div class="space-y-3">
-            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-              <i data-lucide="swords" class="w-6 h-6"></i>
-            </div>
-            <h3 class="text-xl font-bold text-white">Partita con Amici</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
-              Sfide 1v1, 2v2 e 3v3 con rotazione giocatori. Modalità Classica (201-501 con Double Out opzionale), Around the World e Around the Clock.
-            </p>
-          </div>
-          <button onclick="app.showMatchSetup()" class="mt-6 w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all">
-            <span>Nuova Partita</span>
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="pt-4 flex justify-center">
-        <button onclick="app.showHistoryModal()" class="text-xs text-slate-400 hover:text-white flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 transition-colors">
-          <i data-lucide="history" class="w-4 h-4 text-amber-400"></i>
-          <span>Storico Partite & Allenamenti Salvati</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- 2. SETUP ALLENAMENTO -->
-    <section id="screenTrainingSetup" class="hidden space-y-6 my-auto py-4">
-      <div class="flex items-center gap-3">
-        <button onclick="app.showHome()" class="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">
-          <i data-lucide="chevron-left" class="w-5 h-5"></i>
-        </button>
-        <div>
-          <h2 class="text-2xl font-bold text-white">Configura Allenamento</h2>
-          <p class="text-xs text-slate-400">Personalizza la sessione in base ai tuoi obiettivi</p>
-        </div>
-      </div>
-
-      <div class="glass-panel p-5 rounded-2xl space-y-5">
-        <div>
-          <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Modalità di Allenamento</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button id="trModeTargetBtn" onclick="app.setTrainingMode('target')" class="p-3.5 rounded-xl border text-left font-bold text-sm transition-all border-amber-500 bg-amber-500/10 text-amber-300">
-              <div class="flex items-center gap-2">
-                <i data-lucide="crosshair" class="w-4 h-4"></i>
-                <span>Bersagli Casuali</span>
-              </div>
-              <p class="text-[11px] font-normal text-slate-400 mt-1">Genera settori con moltiplicatori (S/D/T)</p>
-            </button>
-            <button id="trModeFreeBtn" onclick="app.setTrainingMode('free')" class="p-3.5 rounded-xl border text-left font-bold text-sm transition-all border-slate-700 bg-slate-800 text-slate-300">
-              <div class="flex items-center gap-2">
-                <i data-lucide="activity" class="w-4 h-4"></i>
-                <span>Tiro Libero</span>
-              </div>
-              <p class="text-[11px] font-normal text-slate-400 mt-1">Conteggio punteggi e media a 3 dardi</p>
-            </button>
-          </div>
-        </div>
-
-        <div id="targetOptionsBox" class="space-y-3">
-          <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block">Moltiplicatori Inclusi</label>
-          <div class="grid grid-cols-3 gap-2">
-            <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs cursor-pointer">
-              <input type="checkbox" id="trIncSingles" checked class="rounded text-amber-500 focus:ring-0">
-              <span>Singoli</span>
-            </label>
-            <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs cursor-pointer">
-              <input type="checkbox" id="trIncDoubles" checked class="rounded text-amber-500 focus:ring-0">
-              <span>Doppi</span>
-            </label>
-            <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs cursor-pointer">
-              <input type="checkbox" id="trIncTriples" checked class="rounded text-amber-500 focus:ring-0">
-              <span>Tripli</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
-          <div>
-            <div class="text-sm font-semibold text-white">Salva Sessione nel Database</div>
-            <div class="text-xs text-slate-400">Registra i progressi e le statistiche finali su Firebase</div>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="trSaveSession" class="sr-only peer" checked>
-            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-          </label>
-        </div>
-
-        <div>
-          <label class="text-xs font-semibold text-slate-400 block mb-1">Tuo Nome o Nickname</label>
-          <input type="text" id="trPlayerName" value="Dart Master" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
-        </div>
-
-        <button onclick="app.startTraining()" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 text-sm flex items-center justify-center gap-2 transition-all">
-          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
-          <span>Avvia Allenamento</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- 3. SETUP PARTITA -->
-    <section id="screenMatchSetup" class="hidden space-y-5 my-auto py-4">
-      <div class="flex items-center gap-3">
-        <button onclick="app.showHome()" class="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">
-          <i data-lucide="chevron-left" class="w-5 h-5"></i>
-        </button>
-        <div>
-          <h2 class="text-2xl font-bold text-white">Configura Partita</h2>
-          <p class="text-xs text-slate-400">Scegli la modalità e imposta squadre o giocatori</p>
-        </div>
-      </div>
-
-      <div class="glass-panel p-5 rounded-2xl space-y-4">
-        <div>
-          <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Modalità di Gioco</label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button id="matchModeX01Btn" onclick="app.setMatchMode('x01')" class="p-3 rounded-xl border text-left font-bold text-xs transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300">
-              <div class="font-extrabold text-sm mb-0.5">Classica (X01)</div>
-              <div class="text-[10px] text-slate-400 font-normal">201, 301, 401 o 501</div>
-            </button>
-            <button id="matchModeWorldBtn" onclick="app.setMatchMode('world')" class="p-3 rounded-xl border text-left font-bold text-xs transition-all border-slate-700 bg-slate-800 text-slate-300">
-              <div class="font-extrabold text-sm mb-0.5">Around The World</div>
-              <div class="text-[10px] text-slate-400 font-normal">Senso orario + Bull obbligatorio</div>
-            </button>
-            <button id="matchModeClockBtn" onclick="app.setMatchMode('clock')" class="p-3 rounded-xl border text-left font-bold text-xs transition-all border-slate-700 bg-slate-800 text-slate-300">
-              <div class="font-extrabold text-sm mb-0.5">Around The Clock</div>
-              <div class="text-[10px] text-slate-400 font-normal">Ordine 1-20 + Bull obbligatorio</div>
-            </button>
-          </div>
-        </div>
-
-        <div id="x01OptionsBox" class="space-y-4 pt-2 border-t border-slate-800">
-          <div>
-            <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Punteggio di Partenza</label>
-            <div class="grid grid-cols-4 gap-2">
-              <button onclick="app.setX01Points(201)" class="x01-pts-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300" data-pts="201">201</button>
-              <button onclick="app.setX01Points(301)" class="x01-pts-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300" data-pts="301">301</button>
-              <button onclick="app.setX01Points(401)" class="x01-pts-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300" data-pts="401">401</button>
-              <button onclick="app.setX01Points(501)" class="x01-pts-btn py-2 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300" data-pts="501">501</button>
-            </div>
-          </div>
-
-          <div>
-            <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Regola di Chiusura (Out)</label>
-            <div class="grid grid-cols-2 gap-2">
-              <button id="outStraightBtn" onclick="app.setCheckoutRule('straight')" class="py-2.5 px-3 rounded-xl border text-xs font-bold transition-all border-slate-700 bg-slate-800 text-slate-300">
-                Chiusura Libera (Straight Out)
-              </button>
-              <button id="outDoubleBtn" onclick="app.setCheckoutRule('double')" class="py-2.5 px-3 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300">
-                Doppio Obbligatorio (Double Out)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-2 border-t border-slate-800">
-          <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Formato Competizione</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button onclick="app.setTeamFormat(1)" class="team-fmt-btn py-2 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300" data-fmt="1">
-              1 vs 1 (Singolo)
-            </button>
-            <button onclick="app.setTeamFormat(2)" class="team-fmt-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300" data-fmt="2">
-              2 vs 2 (Coppie)
-            </button>
-            <button onclick="app.setTeamFormat(3)" class="team-fmt-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300" data-fmt="3">
-              3 vs 3 (Terne)
-            </button>
-          </div>
-        </div>
-
-        <div class="space-y-3 pt-2 border-t border-slate-800">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="playerInputsContainer"></div>
-        </div>
-
-        <button onclick="app.startMatch()" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 text-sm flex items-center justify-center gap-2 transition-all">
-          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
-          <span>Comincia la Sfida</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- 4. ACTIVE GAMEPLAY SCREEN (Layout originale compatto e focalizzato) -->
-    <section id="screenGameplay" class="hidden flex-1 flex flex-col justify-between space-y-3">
-      
-      <!-- Top Info Bar -->
-      <div class="glass-panel p-3 sm:p-4 rounded-2xl flex items-center justify-between">
-        <div>
-          <span id="gameModeBadge" class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
-            Allenamento
-          </span>
-          <div id="gameSubDetail" class="text-xs text-slate-400 mt-0.5">Tiro Libero</div>
-        </div>
-
-        <!-- 3 Dardi del Turno -->
-        <div class="flex items-center gap-1.5">
-          <div class="text-[11px] font-semibold text-slate-400 mr-1 hidden xs:block">Dardi Turno:</div>
-          <div id="dartSlot1" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-300 shadow-inner">-</div>
-          <div id="dartSlot2" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-300 shadow-inner">-</div>
-          <div id="dartSlot3" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-300 shadow-inner">-</div>
-        </div>
-
-        <button onclick="app.confirmEndSession()" class="text-xs p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
-          <i data-lucide="stop-circle" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Termina</span>
-        </button>
-      </div>
-
-      <!-- Scoreboard Dinamica -->
-      <div id="scoreboardContainer" class="w-full"></div>
-
-      <!-- Banner Obiettivo / Checkouts Dinamico -->
-      <div id="liveTargetBanner" class="w-full glass-panel p-3 rounded-2xl text-center flex flex-col items-center justify-center"></div>
-
-      <!-- KEYPAD COMPATTO A CLIC DIRETTO -->
-      <div class="glass-panel p-3 rounded-2xl space-y-2 mt-auto">
-        <!-- Moltiplicatori -->
-        <div class="grid grid-cols-3 gap-1.5">
-          <button id="multS" onclick="app.setMultiplier(1)" class="py-2 rounded-xl font-black text-xs uppercase transition-all bg-amber-500 text-slate-950 shadow-md">
-            Singolo (1x)
-          </button>
-          <button id="multD" onclick="app.setMultiplier(2)" class="py-2 rounded-xl font-black text-xs uppercase transition-all bg-slate-800 text-slate-300 border border-slate-700">
-            Doppio (2x)
-          </button>
-          <button id="multT" onclick="app.setMultiplier(3)" class="py-2 rounded-xl font-black text-xs uppercase transition-all bg-slate-800 text-slate-300 border border-slate-700">
-            Triplo (3x)
-          </button>
-        </div>
-
-        <!-- Numeri da 1 a 20 -->
-        <div class="grid grid-cols-5 gap-1.5 pt-1">
-          <button onclick="app.throwDart(1)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">1</button>
-          <button onclick="app.throwDart(2)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">2</button>
-          <button onclick="app.throwDart(3)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">3</button>
-          <button onclick="app.throwDart(4)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">4</button>
-          <button onclick="app.throwDart(5)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">5</button>
-
-          <button onclick="app.throwDart(6)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">6</button>
-          <button onclick="app.throwDart(7)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">7</button>
-          <button onclick="app.throwDart(8)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">8</button>
-          <button onclick="app.throwDart(9)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">9</button>
-          <button onclick="app.throwDart(10)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">10</button>
-
-          <button onclick="app.throwDart(11)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">11</button>
-          <button onclick="app.throwDart(12)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">12</button>
-          <button onclick="app.throwDart(13)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">13</button>
-          <button onclick="app.throwDart(14)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">14</button>
-          <button onclick="app.throwDart(15)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">15</button>
-
-          <button onclick="app.throwDart(16)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">16</button>
-          <button onclick="app.throwDart(17)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">17</button>
-          <button onclick="app.throwDart(18)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">18</button>
-          <button onclick="app.throwDart(19)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">19</button>
-          <button onclick="app.throwDart(20)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">20</button>
-        </div>
-
-        <!-- Speciali: Miss, Bull 25, Bullseye 50, UNDO -->
-        <div class="grid grid-cols-4 gap-1.5 pt-1">
-          <button onclick="app.throwDart(0)" class="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs border border-slate-800 active:scale-95">
-            MISS (0)
-          </button>
-          <button onclick="app.throwDart(25, 1)" class="py-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 font-extrabold text-xs border border-emerald-800/50 active:scale-95">
-            BULL 25
-          </button>
-          <button onclick="app.throwDart(50, 1)" class="py-2.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 font-extrabold text-xs border border-red-800/50 active:scale-95">
-            D-BULL 50
-          </button>
-          <button onclick="app.undoLastDart()" class="py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold text-xs border border-amber-500/30 active:scale-95 flex items-center justify-center gap-1">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-            <span>UNDO</span>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. REPORT FINALE -->
-    <section id="screenReport" class="hidden space-y-5 my-auto py-6">
-      <div class="glass-panel p-6 rounded-3xl text-center space-y-4">
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/20">
-          <i data-lucide="trophy" class="w-8 h-8"></i>
-        </div>
-        
-        <h2 id="reportTitle" class="text-3xl font-black text-white">Sessione Conclusa!</h2>
-        <p id="reportSubtitle" class="text-sm text-slate-400">Ecco il resoconto completo delle tue freccette</p>
-
-        <div id="reportStatsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2"></div>
-
-        <div id="reportSaveStatus" class="text-xs text-emerald-400 py-1 font-semibold"></div>
-
-        <div class="flex flex-col sm:flex-row gap-2 pt-2">
-          <button onclick="app.restartSameSession()" class="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20">
-            Gioca Ancora
-          </button>
-          <button onclick="app.showHome()" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700">
-            Torna al Menu
-          </button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- MODALE STORICO DATABASE -->
-  <div id="historyModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full max-h-[85vh] rounded-2xl flex flex-col overflow-hidden border border-slate-800">
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i data-lucide="database" class="w-5 h-5 text-amber-400"></i>
-          <h3 class="font-bold text-white text-base">Storico Darts Master</h3>
-        </div>
-        <button onclick="app.closeHistoryModal()" class="p-1 rounded-lg text-slate-400 hover:text-white">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <div id="historyList" class="flex-1 overflow-y-auto p-4 space-y-2 text-xs">
-        <div class="text-center text-slate-500 py-8">Caricamento record da Firebase...</div>
-      </div>
+    <!-- Pure Giant Centered Number (No Boxes, No Clutter) -->
+    <div id="celebrationNumber" class="relative z-10 flex items-center justify-center select-none font-black tracking-tighter drop-shadow-[0_0_35px_rgba(255,215,0,0.8)]">
+      <!-- 180 or 170 rendered dynamically -->
     </div>
   </div>
 
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="max-w-4xl mx-auto w-full p-3 sm:p-4 flex-1 flex flex-col">
+
+    <!-- SCREEN 1: HOME -->
+    <section id="screen-home" class="flex-1 flex flex-col justify-center items-center py-6">
+      <div class="text-center max-w-lg mb-8">
+        <span class="px-3 py-1 text-[11px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full inline-block mb-3">Tiri Immediati &bull; Realtime DB</span>
+        <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight mb-2">Pronto a Lanciare?</h2>
+        <p class="text-gray-400 text-xs sm:text-sm">Allenati con bersagli casuali e statistiche o sfida i tuoi amici. Ogni tocco registra la freccia all'istante.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-2xl">
+        <!-- Training Card -->
+        <div onclick="app.startTrainingConfig()" class="group relative bg-gradient-to-b from-gray-900/90 to-gray-950 border border-emerald-500/30 hover:border-emerald-400 p-6 rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] shadow-xl hover:shadow-emerald-500/20 flex flex-col justify-between">
+          <div class="absolute top-4 right-4 bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold">SOLO</div>
+          <div class="mb-5">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-3 group-hover:bg-emerald-500 group-hover:text-gray-950 transition-colors">
+              <i data-lucide="crosshair" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1.5">Allenamento</h3>
+            <p class="text-gray-400 text-xs leading-relaxed">
+              Generatore di bersagli casuali (Singoli, Doppi, Tripli, Bull) o Tiro Libero. Puoi salvare la sessione su Firebase per analizzare i tuoi progressi.
+            </p>
+          </div>
+          <div class="flex items-center text-emerald-400 font-bold text-xs group-hover:translate-x-1.5 transition-transform">
+            Configura sessione <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+          </div>
+        </div>
+
+        <!-- Match Card -->
+        <div onclick="app.startMatchConfig()" class="group relative bg-gradient-to-b from-gray-900/90 to-gray-950 border border-amber-500/30 hover:border-amber-400 p-6 rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] shadow-xl hover:shadow-amber-500/20 flex flex-col justify-between">
+          <div class="absolute top-4 right-4 bg-amber-500/20 text-amber-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold">AMICI</div>
+          <div class="mb-5">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-3 group-hover:bg-amber-500 group-hover:text-gray-950 transition-colors">
+              <i data-lucide="swords" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1.5">Partita</h3>
+            <p class="text-gray-400 text-xs leading-relaxed">
+              <b>Classica (X01)</b> con double o straight out (1v1, 2v2, 3v3); <b>Around the World</b> (in senso orario) e <b>Around the Clock</b> (da 1 a 20). Chiusura obbligatoria al <b>25/Bullseye</b> per vincere!
+            </p>
+          </div>
+          <div class="flex items-center text-amber-400 font-bold text-xs group-hover:translate-x-1.5 transition-transform">
+            Inizia partita <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: TRAINING CONFIG -->
+    <section id="screen-training-config" class="hidden flex-1 flex flex-col items-center justify-center py-4">
+      <div class="bg-gray-900/95 border border-gray-800 p-6 rounded-3xl w-full max-w-md shadow-2xl backdrop-blur-sm">
+        <div class="flex items-center justify-between mb-5">
+          <button onclick="app.navigate('home')" class="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i> Indietro
+          </button>
+          <h2 class="text-lg font-bold text-white">Allenamento</h2>
+          <div class="w-8"></div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Esercizio</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" id="trainModeRandom" onclick="trainCtrl.setSubMode('random')" class="p-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs text-center flex flex-col items-center gap-1">
+                <i data-lucide="target" class="w-4 h-4"></i>
+                Obiettivo Random
+              </button>
+              <button type="button" id="trainModeFree" onclick="trainCtrl.setSubMode('free')" class="p-3 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-semibold text-xs text-center flex flex-col items-center gap-1">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+                Tiro Libero
+              </button>
+            </div>
+            <p id="trainSubmodeDesc" class="text-[11px] text-gray-400 mt-2">Un bersaglio casuale da centrare. Se lo colpisci, passa immediatamente a quello successivo!</p>
+          </div>
+
+          <div id="trainTargetSettings" class="space-y-1.5">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400">Filtro Difficoltà</label>
+            <select id="trainDifficulty" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="all">Misto (Singoli, Doppi, Tripli & Bull)</option>
+              <option value="doubles">Solo Doppi (Allenamento Checkout)</option>
+              <option value="triples">Solo Tripli (Power Scoring)</option>
+              <option value="singles">Solo Singoli (Precisione Base)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center justify-between p-3.5 bg-gray-800/50 rounded-2xl border border-gray-700/60">
+            <div>
+              <span class="text-xs font-bold text-white block">Salva nel Database Cloud</span>
+              <span class="text-[11px] text-gray-400">Archivia statistiche su Firebase Realtime</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="trainSaveDb" class="sr-only peer" checked>
+              <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Nome Giocatore</label>
+            <input type="text" id="trainPlayerName" value="Tiratore 1" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <button onclick="trainCtrl.startSession()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-gray-950 font-black text-sm shadow-lg shadow-emerald-500/25 transition-all tap-press">
+            INIZIA SESSIONE
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: MATCH CONFIG -->
+    <section id="screen-match-config" class="hidden flex-1 flex flex-col items-center justify-center py-4">
+      <div class="bg-gray-900/95 border border-gray-800 p-6 rounded-3xl w-full max-w-lg shadow-2xl backdrop-blur-sm">
+        <div class="flex items-center justify-between mb-5">
+          <button onclick="app.navigate('home')" class="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i> Indietro
+          </button>
+          <h2 class="text-lg font-bold text-white">Configura Partita</h2>
+          <div class="w-8"></div>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Game Type Selector -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Modalità</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="btnModeClassic" onclick="matchCtrl.setType('classic')" class="p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs text-center">
+                Classica (X01)
+              </button>
+              <button type="button" id="btnModeWorld" onclick="matchCtrl.setType('world')" class="p-2.5 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs text-center">
+                Around World
+              </button>
+              <button type="button" id="btnModeClock" onclick="matchCtrl.setType('clock')" class="p-2.5 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs text-center">
+                Around Clock
+              </button>
+            </div>
+            <p id="gameTypeHelp" class="text-[11px] text-gray-400 mt-1.5">Scala i punti fino a 0. Supporta Straight Out o Double Out.</p>
+          </div>
+
+          <!-- Format Team selection (1v1, 2v2, 3v3) -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Formato Partita</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="btnFormat1v1" onclick="matchCtrl.setFormat(1)" class="py-2 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs">1 vs 1</button>
+              <button type="button" id="btnFormat2v2" onclick="matchCtrl.setFormat(2)" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">2 vs 2</button>
+              <button type="button" id="btnFormat3v3" onclick="matchCtrl.setFormat(3)" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">3 vs 3</button>
+            </div>
+          </div>
+
+          <!-- Classic Options -->
+          <div id="classicOptions" class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Punti Iniziali</label>
+                <select id="classicStartingScore" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-amber-500">
+                  <option value="501" selected>501 Punti</option>
+                  <option value="401">401 Punti</option>
+                  <option value="301">301 Punti</option>
+                  <option value="201">201 Punti</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Chiusura</label>
+                <select id="classicOutRule" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-amber-500">
+                  <option value="straight">Diretta (Straight Out)</option>
+                  <option value="double" selected>Doppio (Double Out)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Players Names -->
+          <div class="space-y-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400">Giocatori</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra A</span>
+                <input type="text" id="teamA_p1" placeholder="Giocatore A1" value="Tiratore A" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs">
+                <input type="text" id="teamA_p2" placeholder="Giocatore A2" value="Compagno A2" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+                <input type="text" id="teamA_p3" placeholder="Giocatore A3" value="Compagno A3" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+              </div>
+              <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-red-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra B</span>
+                <input type="text" id="teamB_p1" placeholder="Giocatore B1" value="Tiratore B" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs">
+                <input type="text" id="teamB_p2" placeholder="Giocatore B2" value="Compagno B2" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+                <input type="text" id="teamB_p3" placeholder="Giocatore B3" value="Compagno B3" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+              </div>
+            </div>
+          </div>
+
+          <button onclick="matchCtrl.startMatch()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-gray-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-all tap-press">
+            INIZIA PARTITA
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: PLAY ARENA (FAST NUMPAD, ZERO BOARD, INSTANT THROW) -->
+    <section id="screen-play" class="hidden flex-1 flex flex-col gap-3">
+      <!-- Top Scoreboard Bar -->
+      <div id="playHeader" class="bg-gray-900/90 border border-gray-800/90 rounded-2xl p-3 sm:p-4 shadow-lg backdrop-blur-sm">
+        <!-- Rendered by controller -->
+      </div>
+
+      <!-- Live Dynamic Target / Current Checkout Card -->
+      <div id="liveTargetCard" class="bg-gray-900/80 border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-lg flex flex-col items-center justify-center text-center">
+        <!-- Injected dynamically with instant feedback -->
+      </div>
+
+      <!-- 3 Dart Slots & Undo Action -->
+      <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2" id="currentDartsDisplay">
+          <!-- 3 slots -->
+        </div>
+
+        <button onclick="playCtrl.undoLastDart()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-amber-300 font-bold text-xs sm:text-sm rounded-xl border border-gray-700 flex items-center gap-2 transition-all tap-press shadow">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Annulla (Undo)
+        </button>
+      </div>
+
+      <!-- KEYPAD SECTION -->
+      <div class="bg-gray-900/90 border border-gray-800/90 rounded-3xl p-3 sm:p-4 shadow-xl flex flex-col gap-2.5">
+        <!-- Multiplier Selector -->
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Moltiplicatore:
+          </span>
+          <div class="flex gap-1.5 bg-gray-950 p-1 rounded-xl border border-gray-800">
+            <button type="button" id="mulBtnS" onclick="keypad.setMultiplier(1)" class="px-3.5 py-1.5 text-xs font-black rounded-lg bg-emerald-500 text-gray-950 transition-all">S (1x)</button>
+            <button type="button" id="mulBtnD" onclick="keypad.setMultiplier(2)" class="px-3.5 py-1.5 text-xs font-black rounded-lg bg-transparent text-gray-300 hover:text-white transition-all">D (2x)</button>
+            <button type="button" id="mulBtnT" onclick="keypad.setMultiplier(3)" class="px-3.5 py-1.5 text-xs font-black rounded-lg bg-transparent text-gray-300 hover:text-white transition-all">T (3x)</button>
+          </div>
+        </div>
+
+        <!-- 1 to 20 Number Grid -->
+        <div id="keypadNumberGrid" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+          <!-- Populated 1..20 -->
+        </div>
+
+        <!-- Miss, Bull 25, Bullseye 50 -->
+        <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-800/80">
+          <button onclick="keypad.hitMiss()" class="py-3 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-red-400 font-black text-xs uppercase flex items-center justify-center gap-1.5 border border-red-500/20 tap-press">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> MISS (0)
+          </button>
+          <button onclick="keypad.hitBull(25)" class="py-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 font-black text-xs uppercase tap-press">
+            BULL (25)
+          </button>
+          <button onclick="keypad.hitBull(50)" class="py-3 rounded-xl bg-red-950/70 hover:bg-red-900 border border-red-600/50 text-red-300 font-black text-xs uppercase tap-press">
+            BULLSEYE (50)
+          </button>
+        </div>
+      </div>
+
+      <!-- Turn History Log -->
+      <div class="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-3 flex flex-col max-h-36">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-blue-400"></i> Turni Recenti
+          </span>
+          <button onclick="playCtrl.abortMatch()" class="text-xs text-red-400 hover:text-red-300 font-semibold">Termina / Esci</button>
+        </div>
+        <div id="turnHistoryList" class="space-y-1 overflow-y-auto pr-1 text-xs text-gray-300 hide-scrollbar flex-1">
+          <p class="text-gray-500 italic py-1 text-center">Nessun tiro registrato.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: SUMMARY & VICTORY -->
+    <section id="screen-summary" class="hidden flex-1 flex flex-col items-center justify-center py-6">
+      <div class="bg-gray-900/95 border border-amber-500/40 p-6 rounded-3xl w-full max-w-md shadow-2xl text-center glow-gold backdrop-blur-md">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/30 mb-3 animate-bounce">
+          <i data-lucide="trophy" class="w-8 h-8 text-gray-950 stroke-[2.5]"></i>
+        </div>
+
+        <h2 id="summaryTitle" class="text-2xl font-black text-white mb-1">VITTORIA!</h2>
+        <p id="summarySubtitle" class="text-amber-400 font-semibold text-xs mb-5">Squadra A vince la sfida</p>
+
+        <div id="summaryStatsGrid" class="grid grid-cols-2 gap-2.5 text-left mb-5">
+          <!-- Injected dynamically -->
+        </div>
+
+        <div id="summaryBreakdown" class="bg-gray-950/70 rounded-2xl p-3 border border-gray-800 text-xs text-gray-300 mb-5 max-h-36 overflow-y-auto text-left">
+          <!-- Injected dynamically -->
+        </div>
+
+        <div class="flex gap-2.5">
+          <button onclick="app.navigate('home')" class="flex-1 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs transition-all tap-press">
+            Torna alla Home
+          </button>
+          <button onclick="playCtrl.rematch()" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs shadow-md shadow-emerald-500/25 transition-all tap-press">
+            Gioca di Nuovo
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 6: STATS & HISTORY -->
+    <section id="screen-stats" class="hidden flex-1 flex flex-col py-3">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-black text-white">Cronologia & Cloud DB</h2>
+          <p class="text-xs text-gray-400">Sessioni sincronizzate con Firebase Realtime Database</p>
+        </div>
+        <button onclick="app.navigate('home')" class="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold flex items-center gap-1">
+          <i data-lucide="home" class="w-3.5 h-3.5"></i> Home
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-3">
+        <button onclick="statsCtrl.filter('all')" id="tabStatsAll" class="px-3 py-1.5 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs">Tutto</button>
+        <button onclick="statsCtrl.filter('training')" id="tabStatsTrain" class="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 font-semibold text-xs">Allenamenti</button>
+        <button onclick="statsCtrl.filter('matches')" id="tabStatsMatch" class="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 font-semibold text-xs">Partite</button>
+        <button onclick="statsCtrl.clearHistory()" class="ml-auto text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Svuota Locale
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Sessioni Totali</span>
+          <span id="statTotSessions" class="text-xl font-black text-white">0</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Dardi Lanciati</span>
+          <span id="statTotDarts" class="text-xl font-black text-emerald-400">0</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Precisione Media</span>
+          <span id="statAccuracy" class="text-xl font-black text-blue-400">0%</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Sincronizzazione</span>
+          <span id="statSyncStatus" class="text-xs font-bold text-emerald-400 mt-2 block">Cloud Online</span>
+        </div>
+      </div>
+
+      <div id="statsHistoryList" class="space-y-2 flex-1 overflow-y-auto">
+        <!-- Injected dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-gray-900/80 py-2.5 text-center text-[11px] text-gray-500">
+    Darts Master & Scorer &bull; Realtime Database Connected
+  </footer>
+
+  <!-- AUDIO ENGINE (SYNTHESIZED WEB AUDIO API - NO EXTERNAL AUDIO FILES OR SPEECH) -->
+  <script>
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      toggle() {
+        this.enabled = !this.enabled;
+        const icon = document.getElementById('soundIcon');
+        if (icon) {
+          icon.setAttribute('data-lucide', this.enabled ? 'volume-2' : 'volume-x');
+          icon.className = this.enabled ? 'w-4 h-4 text-emerald-400' : 'w-4 h-4 text-gray-500';
+          lucide.createIcons();
+        }
+      }
+      playDartThud(multiplier = 1) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          
+          let freq = 120;
+          if (multiplier === 2) freq = 200;
+          if (multiplier === 3) freq = 320;
+
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.08);
+
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+
+          if (multiplier > 1) {
+            const chime = this.ctx.createOscillator();
+            const cGain = this.ctx.createGain();
+            chime.type = 'sine';
+            chime.frequency.setValueAtTime(multiplier === 2 ? 650 : 880, now);
+            cGain.gain.setValueAtTime(0.12, now);
+            cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            chime.connect(cGain);
+            cGain.connect(this.ctx.destination);
+            chime.start(now);
+            chime.stop(now + 0.18);
+          }
+        } catch (e) {
+          console.warn('Audio play error', e);
+        }
+      }
+      playBust() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.linearRampToValueAtTime(70, now + 0.3);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+      playTargetSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(783.99, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+      playVictory() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.11;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        });
+      }
+
+      // TRIUMPHANT SYNTH FANFARE FOR 180 / 170 (NO VOICES)
+      playCelebrationFanfare(is180 = true) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          
+          // Fanfare chords / notes:
+          // 180: Eb4, G4, Bb4 -> G4, Bb4, Eb5 -> Bb4, Eb5, G5 -> Ab4, C5, Eb5 -> Bb4, D5, F5 -> Eb5, G5, Bb5 (Heroic Brass)
+          // 170: C4, E4, G4 -> E4, G4, C5 -> F4, A4, C5 -> G4, B4, D5 -> C5, E5, G5 (Triumphant Chord progression)
+          const chords = is180 ? [
+            { time: 0.00, notes: [311.13, 392.00, 466.16], dur: 0.18 }, // Eb major
+            { time: 0.18, notes: [311.13, 392.00, 466.16], dur: 0.18 },
+            { time: 0.36, notes: [392.00, 466.16, 622.25], dur: 0.24 }, // Eb inversion
+            { time: 0.60, notes: [466.16, 587.33, 698.46], dur: 0.30 }, // Bb major
+            { time: 0.95, notes: [311.13, 392.00, 466.16, 622.25, 932.33], dur: 1.2 } // Climax Grand Chord
+          ] : [
+            { time: 0.00, notes: [261.63, 329.63, 392.00], dur: 0.18 }, // C major
+            { time: 0.18, notes: [293.66, 349.23, 440.00], dur: 0.18 }, // D minor
+            { time: 0.36, notes: [349.23, 440.00, 523.25], dur: 0.24 }, // F major
+            { time: 0.60, notes: [392.00, 493.88, 587.33], dur: 0.30 }, // G major
+            { time: 0.95, notes: [261.63, 392.00, 523.25, 659.25, 1046.50], dur: 1.2 } // Grand C Climax
+          ];
+
+          chords.forEach(chord => {
+            chord.notes.forEach(pitch => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+
+              // Use warm brassy sawtooth + low-pass filter
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(pitch, now + chord.time);
+
+              const filter = this.ctx.createBiquadFilter();
+              filter.type = 'lowpass';
+              filter.frequency.setValueAtTime(2600, now + chord.time);
+              filter.frequency.exponentialRampToValueAtTime(1200, now + chord.time + chord.dur);
+
+              gain.gain.setValueAtTime(0.001, now + chord.time);
+              gain.gain.linearRampToValueAtTime(0.12, now + chord.time + 0.04);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + chord.time + chord.dur);
+
+              osc.connect(filter);
+              filter.connect(gain);
+              gain.connect(this.ctx.destination);
+
+              osc.start(now + chord.time);
+              osc.stop(now + chord.time + chord.dur);
+            });
+          });
+
+          // Add a sparkling shimmer bell effect
+          const bellNotes = is180 ? [622.25, 932.33, 1244.5] : [523.25, 659.25, 1046.5];
+          bellNotes.forEach((f, i) => {
+            const bell = this.ctx.createOscillator();
+            const bGain = this.ctx.createGain();
+            bell.type = 'sine';
+            bell.frequency.setValueAtTime(f, now + 0.95 + (i * 0.06));
+            bGain.gain.setValueAtTime(0.15, now + 0.95 + (i * 0.06));
+            bGain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
+            bell.connect(bGain);
+            bGain.connect(this.ctx.destination);
+            bell.start(now + 0.95 + (i * 0.06));
+            bell.stop(now + 2.3);
+          });
+        } catch (e) {
+          console.warn('Celebration fanfare error', e);
+        }
+      }
+    }
+    const sound = new SoundEngine();
+  </script>
+
+  <!-- FIREWORKS CANVAS ENGINE -->
+  <script>
+    class FireworksEngine {
+      constructor() {
+        this.canvas = null;
+        this.ctx = null;
+        this.particles = [];
+        this.animId = null;
+        this.active = false;
+      }
+
+      init() {
+        this.canvas = document.getElementById('fireworksCanvas');
+        if (!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+      }
+
+      resize() {
+        if (!this.canvas) return;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+      }
+
+      createExplosion(x, y, colorPalette) {
+        const count = 75;
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 8 + 2;
+          const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+          this.particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            alpha: 1,
+            decay: Math.random() * 0.015 + 0.012,
+            size: Math.random() * 3.5 + 2,
+            color: color
+          });
+        }
+      }
+
+      start(type = 'gold') {
+        this.init();
+        this.particles = [];
+        this.active = true;
+
+        const palettes = {
+          gold: ['#f59e0b', '#fbbf24', '#fef08a', '#ffffff', '#ef4444'],
+          cyan: ['#06b6d4', '#38bdf8', '#fbbf24', '#ffffff', '#10b981']
+        };
+        const palette = palettes[type] || palettes.gold;
+
+        // Launch multiple bursts
+        const burstTimes = [0, 200, 450, 700, 950];
+        burstTimes.forEach(delay => {
+          setTimeout(() => {
+            if (!this.active) return;
+            const x = window.innerWidth * (0.2 + Math.random() * 0.6);
+            const y = window.innerHeight * (0.2 + Math.random() * 0.5);
+            this.createExplosion(x, y, palette);
+          }, delay);
+        });
+
+        if (!this.animId) {
+          this.animate();
+        }
+      }
+
+      animate() {
+        if (!this.active && this.particles.length === 0) {
+          if (this.ctx && this.canvas) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          }
+          this.animId = null;
+          return;
+        }
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.12; // Gravity
+          p.vx *= 0.98; // Friction
+          p.alpha -= p.decay;
+
+          if (p.alpha <= 0) {
+            this.particles.splice(i, 1);
+            continue;
+          }
+
+          this.ctx.save();
+          this.ctx.globalAlpha = p.alpha;
+          this.ctx.fillStyle = p.color;
+          this.ctx.shadowBlur = 10;
+          this.ctx.shadowColor = p.color;
+          this.ctx.beginPath();
+          this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        this.animId = requestAnimationFrame(() => this.animate());
+      }
+
+      stop() {
+        this.active = false;
+        setTimeout(() => {
+          this.particles = [];
+        }, 1500);
+      }
+    }
+    const fireworks = new FireworksEngine();
+  </script>
+
+  <!-- CELEBRATION DISPATCHER (PURE GIGANTIC NUMBER + FANFARE SOUND - NO VOICE) -->
+  <script>
+    class CelebrationController {
+      constructor() {
+        this.active = false;
+      }
+
+      trigger(number) {
+        if (this.active) return;
+        this.active = true;
+
+        const overlay = document.getElementById('celebrationOverlay');
+        const numContainer = document.getElementById('celebrationNumber');
+        if (!overlay || !numContainer) return;
+
+        const is180 = (number === 180);
+
+        // Pure giant number without text or boxes
+        numContainer.innerHTML = `
+          <span class="celebrate-zoom text-8xl sm:text-9xl md:text-[14rem] font-black ${
+            is180 
+              ? 'text-transparent bg-clip-text bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-500 drop-shadow-[0_0_45px_rgba(245,158,11,0.95)]' 
+              : 'text-transparent bg-clip-text bg-gradient-to-br from-cyan-200 via-teal-300 to-amber-300 drop-shadow-[0_0_45px_rgba(6,182,212,0.95)]'
+          }">
+            ${number}
+          </span>
+        `;
+
+        overlay.classList.remove('hidden');
+
+        // Play synthetic triumphant fanfare (brass chords & shimmering bells)
+        sound.playCelebrationFanfare(is180);
+
+        // Start fireworks on canvas
+        fireworks.start(is180 ? 'gold' : 'cyan');
+
+        // Launch confetti burst
+        if (window.confetti) {
+          window.confetti({
+            particleCount: is180 ? 160 : 120,
+            spread: 100,
+            origin: { y: 0.6 }
+          });
+        }
+
+        // Auto-dismiss after 2.8 seconds
+        setTimeout(() => {
+          overlay.classList.add('hidden');
+          numContainer.innerHTML = '';
+          fireworks.stop();
+          this.active = false;
+        }, 2800);
+      }
+    }
+    const celebrator = new CelebrationController();
+  </script>
+
+  <!-- FIREBASE REALTIME DATABASE MODULE -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBNBtkK187F1M0Nyn0YKIM7A69M5UgE9Jw",
@@ -438,1094 +856,1153 @@
       appId: "1:634183568712:web:83f8345ecdb2170ba8777d"
     };
 
-    let fbApp = null;
-    let fbDb = null;
-    try {
-      fbApp = initializeApp(firebaseConfig);
-      fbDb = getDatabase(fbApp);
-      const badge = document.getElementById('firebaseBadge');
-      if (badge) badge.classList.remove('hidden');
-    } catch(e) {
-      console.warn("Fallback locale attivo:", e);
-    }
-
-    // Motore Audio Sintetico Web Audio API
-    let audioCtx = null;
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    class RealtimeDatabaseService {
+      constructor() {
+        this.db = null;
+        this.connected = false;
+        this.init();
       }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
 
-    function playDartSound(multiplier = 1) {
-      try {
-        initAudio();
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        const freq = multiplier === 3 ? 660 : (multiplier === 2 ? 520 : 380);
-        osc.type = multiplier > 1 ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
-
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-
-        osc.start(now);
-        osc.stop(now + 0.09);
-      } catch(e){}
-    }
-
-    function playBustSound() {
-      try {
-        initAudio();
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.linearRampToValueAtTime(70, now + 0.28);
-
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.28);
-
-        osc.start(now);
-        osc.stop(now + 0.29);
-      } catch(e){}
-    }
-
-    function playCelebrationFanfare() {
-      try {
-        initAudio();
-        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
-        const now = audioCtx.currentTime;
-        
-        notes.forEach((freq, index) => {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, now + (index * 0.09));
-
-          const startTime = now + (index * 0.09);
-          const duration = (index === notes.length - 1) ? 1.4 : 0.22;
-          
-          gain.gain.setValueAtTime(0, startTime);
-          gain.gain.linearRampToValueAtTime(0.35, startTime + 0.03);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-          osc.start(startTime);
-          osc.stop(startTime + duration);
-        });
-      } catch(e){}
-    }
-
-    // Motore Fuochi d'Artificio su Canvas
-    let fireworksInterval = null;
-    let fireworksActive = false;
-    const canvas = document.getElementById('fireworksCanvas');
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    function createFirework() {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * (canvas.height * 0.6);
-      const count = 55;
-      const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#fbbf24', '#ffffff'];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-
-      for (let i = 0; i < count; i++) {
-        const angle = (Math.PI * 2 / count) * i;
-        const speed = Math.random() * 5 + 2;
-        particles.push({
-          x: x,
-          y: y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          color: color,
-          alpha: 1,
-          decay: Math.random() * 0.02 + 0.015,
-          radius: Math.random() * 2.5 + 1.5
-        });
-      }
-    }
-
-    function renderFireworks() {
-      if (!fireworksActive && particles.length === 0) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.04;
-        p.alpha -= p.decay;
-
-        if (p.alpha <= 0) {
-          particles.splice(i, 1);
-        } else {
-          ctx.save();
-          ctx.globalAlpha = p.alpha;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = p.color;
-          ctx.fill();
-          ctx.restore();
+      init() {
+        try {
+          const app = initializeApp(firebaseConfig);
+          this.db = getDatabase(app);
+          this.connected = true;
+          this.listenForData();
+        } catch (e) {
+          console.warn('Firebase initialization note (offline/local fallback active):', e);
+          this.connected = false;
         }
       }
 
-      requestAnimationFrame(renderFireworks);
-    }
+      listenForData() {
+        if (!this.db) return;
+        try {
+          // Listen for matches
+          const matchRef = ref(this.db, 'matches');
+          onValue(matchRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+              this.updateSyncedCache(list, 'match');
+            }
+          }, (err) => {
+            console.warn('Realtime DB match sync warning:', err);
+          });
 
-    function triggerCelebration(number) {
-      const overlay = document.getElementById('celebrationOverlay');
-      const numElem = document.getElementById('celebrationNumber');
-      if (!overlay || !numElem) return;
-
-      numElem.textContent = number;
-      overlay.classList.remove('hidden');
-      numElem.classList.remove('celebrate-anim');
-      void numElem.offsetWidth;
-      numElem.classList.add('celebrate-anim');
-
-      playCelebrationFanfare();
-
-      if (typeof confetti === 'function') {
-        confetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 }
-        });
+          // Listen for training sessions
+          const trainRef = ref(this.db, 'training_sessions');
+          onValue(trainRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+              this.updateSyncedCache(list, 'training');
+            }
+          }, (err) => {
+            console.warn('Realtime DB training sync warning:', err);
+          });
+        } catch (err) {
+          console.warn('Listener error:', err);
+        }
       }
 
-      fireworksActive = true;
-      particles = [];
-      resizeCanvas();
-      renderFireworks();
-
-      createFirework();
-      let burstCount = 0;
-      clearInterval(fireworksInterval);
-      fireworksInterval = setInterval(() => {
-        createFirework();
-        burstCount++;
-        if (burstCount >= 7) {
-          clearInterval(fireworksInterval);
-          fireworksActive = false;
+      updateSyncedCache(incomingList, type) {
+        let local = this.getLocalHistory();
+        local = local.filter(item => item.type !== type);
+        local = [...incomingList, ...local];
+        local.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        try {
+          localStorage.setItem('darts_history', JSON.stringify(local.slice(0, 150)));
+        } catch (e) {}
+        if (window.statsCtrl && window.app && window.app.currentScreen === 'stats') {
+          window.statsCtrl.loadAndRender();
         }
-      }, 350);
+      }
 
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        numElem.classList.remove('celebrate-anim');
-      }, 3400);
+      async saveSession(sessionRecord) {
+        sessionRecord.timestamp = Date.now();
+        const local = this.getLocalHistory();
+        local.unshift(sessionRecord);
+        try {
+          localStorage.setItem('darts_history', JSON.stringify(local.slice(0, 150)));
+        } catch (e) {}
+
+        if (this.db) {
+          try {
+            const path = sessionRecord.type === 'training' ? 'training_sessions' : 'matches';
+            const nodeRef = ref(this.db, path);
+            const newRef = push(nodeRef);
+            await set(newRef, sessionRecord);
+          } catch (e) {
+            console.warn('Error pushing to Firebase Realtime DB:', e);
+          }
+        }
+      }
+
+      getLocalHistory() {
+        try {
+          const raw = localStorage.getItem('darts_history');
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          return [];
+        }
+      }
     }
 
-    const ORDER_AROUND_THE_WORLD = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20, 25];
-    const ORDER_AROUND_THE_CLOCK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25];
+    window.rtDbService = new RealtimeDatabaseService();
+  </script>
+
+  <!-- GAME DATA & CHECKOUT ENGINE -->
+  <script>
+    // Around the World: Sector order starting clockwise from right of 20 (sector 1) -> 20 -> 25
+    const AROUND_THE_WORLD_SECTORS = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20, 25];
+
+    // Around the Clock: 1 to 20 then 25
+    const AROUND_THE_CLOCK_SECTORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25];
 
     const CHECKOUTS = {
-      170: "T20 • T20 • BULL",
-      167: "T20 • T19 • BULL",
-      164: "T20 • T18 • BULL",
-      161: "T20 • T17 • BULL",
-      160: "T20 • T20 • D20",
-      158: "T20 • T20 • D19",
-      156: "T20 • T20 • D18",
-      154: "T20 • T18 • D20",
-      152: "T20 • T20 • D16",
-      150: "T20 • T18 • D18",
-      140: "T20 • T20 • D10",
-      121: "T20 • T15 • D8",
-      110: "T20 • 18 • D16",
-      100: "T20 • D20",
-      80: "T20 • D10",
-      70: "T18 • D8",
-      60: "20 • D20",
-      50: "BULLSEYE",
-      40: "D20",
-      36: "D18",
-      32: "D16",
-      24: "D12",
-      20: "D10",
-      16: "D8",
-      8: "D4",
-      4: "D2",
+      170: "T20 - T20 - Bull", 167: "T20 - T19 - Bull", 164: "T20 - T18 - Bull", 161: "T20 - T17 - Bull",
+      160: "T20 - T20 - D20",  158: "T20 - T20 - D19",  156: "T20 - T20 - D18",  154: "T20 - T18 - D20",
+      152: "T20 - T20 - D16",  150: "T20 - T18 - D18",  140: "T20 - T20 - D10",  130: "T20 - T20 - D5",
+      121: "T20 - T11 - D14",  100: "T20 - D20",        80: "T20 - D10",         70: "T10 - D20",
+      60: "S20 - D20",         50: "Bull (50)",         40: "D20",               36: "D18",
+      32: "D16",               24: "D12",               20: "D10",               16: "D8",
+      12: "D6",                10: "D5",                8: "D4",                 4: "D2",
       2: "D1"
     };
 
-    window.app = {
-      currentMultiplier: 1,
-      currentType: null,
-      trainingConfig: {
-        mode: 'target',
-        save: true,
-        playerName: 'Dart Master',
-        incSingles: true,
-        incDoubles: true,
-        incTriples: true
-      },
-      matchConfig: {
-        mode: 'x01',
-        x01Points: 501,
-        checkoutRule: 'double',
-        teamFormat: 1,
-        teams: [
-          { name: "Squadra 1", players: ["Giocatore 1"] },
-          { name: "Squadra 2", players: ["Giocatore 2"] }
-        ]
-      },
-      gameState: null,
-      historyStack: [],
+    function getCheckoutTip(remainingScore, doubleOutRequired = true) {
+      if (!doubleOutRequired) {
+        if (remainingScore <= 20) return `S${remainingScore}`;
+        if (remainingScore <= 40 && remainingScore % 2 === 0) return `D${remainingScore / 2} o S${remainingScore}`;
+        if (remainingScore <= 60 && remainingScore % 3 === 0) return `T${remainingScore / 3}`;
+        return `Punta a T20 (60)`;
+      }
+
+      if (remainingScore > 170 || remainingScore <= 1 || [169, 168, 166, 165, 163, 162, 159].includes(remainingScore)) {
+        return "Nessun checkout immediato (Punta a T20 per abbassare)";
+      }
+
+      if (CHECKOUTS[remainingScore]) return CHECKOUTS[remainingScore];
+
+      if (remainingScore <= 40 && remainingScore % 2 === 0) {
+        return `D${remainingScore / 2}`;
+      }
+
+      if (remainingScore <= 50) {
+        if (remainingScore === 50) return "Bullseye (50)";
+        const single = remainingScore % 2 === 0 ? 2 : 1;
+        const targetDouble = (remainingScore - single) / 2;
+        return `S${single} - D${targetDouble}`;
+      }
+
+      return "Punta a settori singoli per preparare un doppio (es. D20 o D16)";
+    }
+  </script>
+
+  <!-- KEYPAD MANAGER -->
+  <script>
+    class KeypadManager {
+      constructor() {
+        this.currentMultiplier = 1; // 1 (S), 2 (D), 3 (T)
+      }
 
       init() {
-        lucide.createIcons();
-        this.renderPlayerInputs();
-        window.addEventListener('touchstart', initAudio, { once: true });
-        window.addEventListener('click', initAudio, { once: true });
-      },
+        const grid = document.getElementById('keypadNumberGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let i = 1; i <= 20; i++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'py-3 sm:py-3.5 rounded-xl bg-gray-800/90 hover:bg-gray-700 active:bg-emerald-600 text-white font-extrabold text-sm sm:text-base border border-gray-700/70 transition-all tap-press shadow-sm flex items-center justify-center';
+          btn.textContent = i;
+          btn.onclick = () => {
+            const mult = this.currentMultiplier;
+            const prefix = mult === 3 ? 'T' : (mult === 2 ? 'D' : 'S');
+            this.registerHit(i, mult, `${prefix}${i}`);
+            this.setMultiplier(1);
+          };
+          grid.appendChild(btn);
+        }
+      }
 
       setMultiplier(m) {
         this.currentMultiplier = m;
-        ['multS', 'multD', 'multT'].forEach(id => {
-          const btn = document.getElementById(id);
-          btn.className = "py-2 rounded-xl font-black text-xs uppercase transition-all bg-slate-800 text-slate-300 border border-slate-700";
-        });
-        const activeBtn = m === 1 ? 'multS' : (m === 2 ? 'multD' : 'multT');
-        document.getElementById(activeBtn).className = "py-2 rounded-xl font-black text-xs uppercase transition-all bg-amber-500 text-slate-950 shadow-md";
-      },
-
-      showHome() {
-        this.hideAllScreens();
-        document.getElementById('screenHome').classList.remove('hidden');
-        lucide.createIcons();
-      },
-      showTrainingSetup() {
-        this.hideAllScreens();
-        document.getElementById('screenTrainingSetup').classList.remove('hidden');
-        lucide.createIcons();
-      },
-      showMatchSetup() {
-        this.hideAllScreens();
-        document.getElementById('screenMatchSetup').classList.remove('hidden');
-        this.renderPlayerInputs();
-        lucide.createIcons();
-      },
-      hideAllScreens() {
-        ['screenHome', 'screenTrainingSetup', 'screenMatchSetup', 'screenGameplay', 'screenReport'].forEach(id => {
-          document.getElementById(id).classList.add('hidden');
-        });
-      },
-
-      setTrainingMode(mode) {
-        this.trainingConfig.mode = mode;
-        const tBtn = document.getElementById('trModeTargetBtn');
-        const fBtn = document.getElementById('trModeFreeBtn');
-        const box = document.getElementById('targetOptionsBox');
-        if (mode === 'target') {
-          tBtn.className = "p-3.5 rounded-xl border text-left font-bold text-sm transition-all border-amber-500 bg-amber-500/10 text-amber-300";
-          fBtn.className = "p-3.5 rounded-xl border text-left font-bold text-sm transition-all border-slate-700 bg-slate-800 text-slate-300";
-          box.classList.remove('hidden');
-        } else {
-          fBtn.className = "p-3.5 rounded-xl border text-left font-bold text-sm transition-all border-amber-500 bg-amber-500/10 text-amber-300";
-          tBtn.className = "p-3.5 rounded-xl border text-left font-bold text-sm transition-all border-slate-700 bg-slate-800 text-slate-300";
-          box.classList.add('hidden');
-        }
-      },
-
-      setMatchMode(mode) {
-        this.matchConfig.mode = mode;
-        ['matchModeX01Btn', 'matchModeWorldBtn', 'matchModeClockBtn'].forEach(id => {
-          document.getElementById(id).className = "p-3 rounded-xl border text-left font-bold text-xs transition-all border-slate-700 bg-slate-800 text-slate-300";
-        });
-        const activeId = mode === 'x01' ? 'matchModeX01Btn' : (mode === 'world' ? 'matchModeWorldBtn' : 'matchModeClockBtn');
-        document.getElementById(activeId).className = "p-3 rounded-xl border text-left font-bold text-xs transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300";
-
-        const x01Box = document.getElementById('x01OptionsBox');
-        if (mode === 'x01') {
-          x01Box.classList.remove('hidden');
-        } else {
-          x01Box.classList.add('hidden');
-        }
-      },
-
-      setX01Points(pts) {
-        this.matchConfig.x01Points = pts;
-        document.querySelectorAll('.x01-pts-btn').forEach(btn => {
-          if (parseInt(btn.dataset.pts) === pts) {
-            btn.className = "x01-pts-btn py-2 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300";
-          } else {
-            btn.className = "x01-pts-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300";
+        ['mulBtnS', 'mulBtnD', 'mulBtnT'].forEach(id => {
+          const b = document.getElementById(id);
+          if (b) {
+            b.className = 'px-3.5 py-1.5 text-xs font-black rounded-lg bg-transparent text-gray-300 hover:text-white transition-all';
           }
         });
-      },
 
-      setCheckoutRule(rule) {
-        this.matchConfig.checkoutRule = rule;
-        const sBtn = document.getElementById('outStraightBtn');
-        const dBtn = document.getElementById('outDoubleBtn');
-        if (rule === 'double') {
-          dBtn.className = "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300";
-          sBtn.className = "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all border-slate-700 bg-slate-800 text-slate-300";
-        } else {
-          sBtn.className = "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300";
-          dBtn.className = "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all border-slate-700 bg-slate-800 text-slate-300";
+        const activeId = m === 3 ? 'mulBtnT' : (m === 2 ? 'mulBtnD' : 'mulBtnS');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) {
+          activeBtn.className = 'px-3.5 py-1.5 text-xs font-black rounded-lg bg-emerald-500 text-gray-950 transition-all';
         }
-      },
+      }
 
-      setTeamFormat(fmt) {
-        this.matchConfig.teamFormat = fmt;
-        document.querySelectorAll('.team-fmt-btn').forEach(btn => {
-          if (parseInt(btn.dataset.fmt) === fmt) {
-            btn.className = "team-fmt-btn py-2 rounded-xl border text-xs font-bold transition-all border-emerald-500 bg-emerald-500/10 text-emerald-300";
-          } else {
-            btn.className = "team-fmt-btn py-2 rounded-xl border text-xs font-bold transition-all bg-slate-800 border-slate-700 text-slate-300";
-          }
+      hitMiss() {
+        this.registerHit(0, 1, 'MISS');
+        this.setMultiplier(1);
+      }
+
+      hitBull(val) {
+        const mult = val === 50 ? 2 : 1;
+        const label = val === 50 ? 'BULL 50 (D)' : 'BULL 25';
+        this.registerHit(val, mult, label);
+        this.setMultiplier(1);
+      }
+
+      registerHit(value, multiplier, label) {
+        sound.playDartThud(multiplier);
+        playCtrl.recordInstantDart({
+          value: value,
+          multiplier: multiplier,
+          score: value === 50 ? 50 : value * multiplier,
+          label: label
         });
-        this.renderPlayerInputs();
-      },
+      }
+    }
+    const keypad = new KeypadManager();
+  </script>
 
-      renderPlayerInputs() {
-        const container = document.getElementById('playerInputsContainer');
-        const fmt = this.matchConfig.teamFormat;
-        let html = '';
+  <!-- PLAY CONTROLLER & GAME RULES ENGINE -->
+  <script>
+    class PlayController {
+      constructor() {
+        this.sessionType = null; // 'training' | 'match'
+        this.matchType = null;   // 'classic' | 'world' | 'clock'
+        this.config = {};
+        this.currentDarts = [];  // max 3
+        this.turnHistory = [];
+        this.historySnapshots = [];
+        this.activeTurn = 1;
+        this.activeTeamIdx = 0;
+        this.activePlayerIdx = { 0: 0, 1: 0 };
+        this.matchState = null;
+        this.trainState = null;
+      }
 
-        for (let t = 0; t < 2; t++) {
-          const teamLabel = t === 0 ? "Squadra 1 / Casa" : "Squadra 2 / Ospiti";
-          html += `
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-              <div class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full ${t === 0 ? 'bg-amber-400' : 'bg-emerald-400'}"></span>
-                <span>${teamLabel}</span>
-              </div>
-          `;
-          for (let p = 0; p < fmt; p++) {
-            const defName = fmt === 1 ? `Giocatore ${t + 1}` : `Giocatore ${t + 1}.${p + 1}`;
-            html += `
-              <input type="text" id="team_${t}_p_${p}" value="${defName}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500">
-            `;
-          }
-          html += `</div>`;
-        }
-        container.innerHTML = html;
-      },
-
-      startTraining() {
-        this.currentType = 'training';
-        this.historyStack = [];
-        this.trainingConfig.save = document.getElementById('trSaveSession').checked;
-        this.trainingConfig.playerName = document.getElementById('trPlayerName').value.trim() || 'Dart Master';
-        this.trainingConfig.incSingles = document.getElementById('trIncSingles').checked;
-        this.trainingConfig.incDoubles = document.getElementById('trIncDoubles').checked;
-        this.trainingConfig.incTriples = document.getElementById('trIncTriples').checked;
-
-        this.gameState = {
-          type: 'training',
-          mode: this.trainingConfig.mode,
-          playerName: this.trainingConfig.playerName,
-          dartsCount: 0,
-          totalScore: 0,
-          currentTurnDarts: [],
-          currentTarget: null,
-          targetAttempts: 0,
-          targetHits: 0,
-          currentStreak: 0,
-          bestStreak: 0,
-          startTime: Date.now()
+      takeSnapshot() {
+        const snap = {
+          sessionType: this.sessionType,
+          matchType: this.matchType,
+          activeTurn: this.activeTurn,
+          activeTeamIdx: this.activeTeamIdx,
+          activePlayerIdx: { ...this.activePlayerIdx },
+          currentDarts: JSON.parse(JSON.stringify(this.currentDarts)),
+          turnHistory: JSON.parse(JSON.stringify(this.turnHistory)),
+          matchState: this.matchState ? JSON.parse(JSON.stringify(this.matchState)) : null,
+          trainState: this.trainState ? JSON.parse(JSON.stringify(this.trainState)) : null
         };
-
-        if (this.trainingConfig.mode === 'target') {
-          this.generateNewTarget();
-        }
-
-        this.hideAllScreens();
-        document.getElementById('screenGameplay').classList.remove('hidden');
-        this.updateGameplayUI();
-      },
-
-      startMatch() {
-        this.currentType = 'match';
-        this.historyStack = [];
-        const fmt = this.matchConfig.teamFormat;
-
-        const teams = [
-          { name: "Squadra 1", players: [] },
-          { name: "Squadra 2", players: [] }
-        ];
-
-        for (let t = 0; t < 2; t++) {
-          for (let p = 0; p < fmt; p++) {
-            const val = document.getElementById(`team_${t}_p_${p}`)?.value.trim();
-            teams[t].players.push(val || `Giocatore ${t + 1}.${p + 1}`);
-          }
-        }
-
-        this.gameState = {
-          type: 'match',
-          mode: this.matchConfig.mode,
-          x01Points: this.matchConfig.x01Points,
-          checkoutRule: this.matchConfig.checkoutRule,
-          teamFormat: fmt,
-          teams: [
-            {
-              name: teams[0].name,
-              players: teams[0].players,
-              scoreRemaining: this.matchConfig.x01Points,
-              targetIndex: 0,
-              dartsThrown: 0,
-              totalPointsScored: 0
-            },
-            {
-              name: teams[1].name,
-              players: teams[1].players,
-              scoreRemaining: this.matchConfig.x01Points,
-              targetIndex: 0,
-              dartsThrown: 0,
-              totalPointsScored: 0
-            }
-          ],
-          activeTeamIndex: 0,
-          activePlayerIndices: [0, 0],
-          currentTurnDarts: [],
-          turnStartScoreRemaining: this.matchConfig.x01Points,
-          winner: null,
-          startTime: Date.now()
-        };
-
-        this.hideAllScreens();
-        document.getElementById('screenGameplay').classList.remove('hidden');
-        this.updateGameplayUI();
-      },
-
-      generateNewTarget() {
-        const allowedMults = [];
-        if (this.trainingConfig.incSingles) allowedMults.push(1);
-        if (this.trainingConfig.incDoubles) allowedMults.push(2);
-        if (this.trainingConfig.incTriples) allowedMults.push(3);
-
-        if (allowedMults.length === 0) allowedMults.push(1);
-
-        const mult = allowedMults[Math.floor(Math.random() * allowedMults.length)];
-        let sector = Math.floor(Math.random() * 20) + 1;
-
-        if (Math.random() < 0.08) {
-          if (mult === 2) sector = 50;
-          else sector = 25;
-        }
-
-        let label = '';
-        if (sector === 50) label = "D-BULL (50)";
-        else if (sector === 25) label = "BULL (25)";
-        else {
-          const prefix = mult === 3 ? 'T' : (mult === 2 ? 'D' : 'S');
-          label = `${prefix}${sector}`;
-        }
-
-        this.gameState.currentTarget = {
-          sector: sector,
-          multiplier: (sector === 25 || sector === 50) ? 1 : mult,
-          label: label,
-          targetValue: (sector === 25 || sector === 50) ? sector : (sector * mult)
-        };
-      },
-
-      pushUndoState() {
-        this.historyStack.push(JSON.parse(JSON.stringify(this.gameState)));
-        if (this.historyStack.length > 50) this.historyStack.shift();
-      },
+        this.historySnapshots.push(snap);
+      }
 
       undoLastDart() {
-        if (this.historyStack.length === 0) return;
-        this.gameState = this.historyStack.pop();
-        this.setMultiplier(1);
-        this.updateGameplayUI();
-      },
+        if (this.historySnapshots.length === 0) return;
+        const prev = this.historySnapshots.pop();
 
-      throwDart(sector, forcedMult = null) {
-        initAudio();
-        this.pushUndoState();
+        this.sessionType = prev.sessionType;
+        this.matchType = prev.matchType;
+        this.activeTurn = prev.activeTurn;
+        this.activeTeamIdx = prev.activeTeamIdx;
+        this.activePlayerIdx = prev.activePlayerIdx;
+        this.currentDarts = prev.currentDarts;
+        this.turnHistory = prev.turnHistory;
+        this.matchState = prev.matchState;
+        this.trainState = prev.trainState;
 
-        const mult = forcedMult !== null ? forcedMult : this.currentMultiplier;
-        const dartPoints = (sector === 25 || sector === 50) ? sector : (sector * mult);
+        this.updateDartsSlotsUi();
+        this.renderArenaUi();
+        this.updateTurnHistoryUi();
+      }
 
-        playDartSound(mult);
+      checkHighScoresCelebration() {
+        if (this.currentDarts.length !== 3) return;
 
-        const dartInfo = {
-          sector: sector,
-          multiplier: mult,
-          points: dartPoints,
-          label: sector === 0 ? 'MISS' : (sector === 50 ? 'D-BULL' : (sector === 25 ? 'BULL' : `${mult === 3 ? 'T' : (mult === 2 ? 'D' : 'S')}${sector}`))
-        };
-
-        if (this.gameState.type === 'training') {
-          this.handleTrainingDart(dartInfo);
-        } else {
-          this.handleMatchDart(dartInfo);
+        // Check for 180: T20, T20, T20
+        const is180 = this.currentDarts.every(d => d.value === 20 && d.multiplier === 3);
+        if (is180) {
+          celebrator.trigger(180);
+          return;
         }
 
-        this.setMultiplier(1);
-      },
+        // Check for 170 (The Big Fish checkout/combination): T20, T20 and Bullseye (50)
+        const t20Count = this.currentDarts.filter(d => d.value === 20 && d.multiplier === 3).length;
+        const bull50Count = this.currentDarts.filter(d => d.value === 50).length;
 
-      handleTrainingDart(dart) {
-        const gs = this.gameState;
-        gs.dartsCount++;
-        gs.totalScore += dart.points;
-        gs.currentTurnDarts.push(dart);
+        if (t20Count === 2 && bull50Count === 1) {
+          celebrator.trigger(170);
+        }
+      }
 
-        if (gs.mode === 'target' && gs.currentTarget) {
-          gs.targetAttempts++;
-          const target = gs.currentTarget;
-          const isHit = (target.sector === dart.sector) && (target.multiplier === dart.multiplier);
+      recordInstantDart(dartObj) {
+        this.takeSnapshot();
+        this.currentDarts.push(dartObj);
+        this.updateDartsSlotsUi();
+
+        if (this.sessionType === 'training') {
+          this.applyTrainingDart(dartObj);
+        } else {
+          this.applyMatchDart(dartObj);
+        }
+
+        // Evaluate 180 or 170 whenever 3 darts are registered
+        if (this.currentDarts.length === 3) {
+          this.checkHighScoresCelebration();
+        }
+      }
+
+      applyTrainingDart(dartObj) {
+        this.trainState.totalDarts++;
+
+        if (this.trainState.subMode === 'random') {
+          const target = this.trainState.currentTarget;
+          let isHit = false;
+
+          if (target.isBull) {
+            isHit = (dartObj.value === target.value);
+          } else {
+            isHit = (dartObj.value === target.number && dartObj.multiplier === target.multiplier);
+          }
 
           if (isHit) {
-            gs.targetHits++;
-            gs.currentStreak++;
-            if (gs.currentStreak > gs.bestStreak) gs.bestStreak = gs.currentStreak;
-            this.generateNewTarget();
+            sound.playTargetSuccess();
+            this.trainState.successfulTargets++;
+            this.trainState.streak++;
+            if (this.trainState.streak > this.trainState.bestStreak) {
+              this.trainState.bestStreak = this.trainState.streak;
+            }
+            trainCtrl.generateRandomTarget();
           } else {
-            gs.currentStreak = 0;
+            this.trainState.streak = 0;
           }
         }
 
-        if (gs.currentTurnDarts.length === 3) {
-          const snapshotDarts = [...gs.currentTurnDarts];
-          this.checkTurnCelebration(snapshotDarts);
-          gs.currentTurnDarts = [];
+        if (this.currentDarts.length >= 3) {
+          const sum = this.currentDarts.reduce((a, d) => a + d.score, 0);
+          this.turnHistory.unshift({
+            turn: this.activeTurn,
+            player: this.trainState.playerName,
+            darts: [...this.currentDarts],
+            sum: sum,
+            time: new Date().toLocaleTimeString()
+          });
+          this.activeTurn++;
+          this.currentDarts = [];
+          this.updateDartsSlotsUi();
+          this.updateTurnHistoryUi();
         }
 
-        this.updateGameplayUI();
-      },
+        this.renderArenaUi();
+      }
 
-      handleMatchDart(dart) {
-        const gs = this.gameState;
-        const currentTeam = gs.teams[gs.activeTeamIndex];
-        currentTeam.dartsThrown++;
-        currentTeam.totalPointsScored += dart.points;
-        gs.currentTurnDarts.push(dart);
-
-        let turnShouldAdvance = false;
+      applyMatchDart(dartObj) {
+        const team = this.matchState.teams[this.activeTeamIdx];
+        const currentPlayer = team.players[this.activePlayerIdx[this.activeTeamIdx]];
+        let endTurnEarly = false;
         let isBust = false;
+        let isWin = false;
 
-        if (gs.mode === 'x01') {
-          const remaining = currentTeam.scoreRemaining - dart.points;
-          const needDouble = gs.checkoutRule === 'double';
+        if (this.matchType === 'classic') {
+          const doubleOut = this.config.classicOut === 'double';
+          const newScore = team.score - dartObj.score;
 
-          if (remaining < 0 || (needDouble && remaining === 1)) {
+          if (newScore < 0) {
             isBust = true;
-            playBustSound();
-            currentTeam.scoreRemaining = gs.turnStartScoreRemaining;
-            turnShouldAdvance = true;
-          } else if (remaining === 0) {
-            if (needDouble) {
-              const isDoubleOut = (dart.multiplier === 2) || (dart.sector === 50);
-              if (isDoubleOut) {
-                currentTeam.scoreRemaining = 0;
-                this.handleVictory(currentTeam);
-                return;
+          } else if (doubleOut && newScore === 1) {
+            isBust = true;
+          } else if (newScore === 0) {
+            if (doubleOut) {
+              if (dartObj.multiplier === 2 || dartObj.value === 50) {
+                isWin = true;
               } else {
                 isBust = true;
-                playBustSound();
-                currentTeam.scoreRemaining = gs.turnStartScoreRemaining;
-                turnShouldAdvance = true;
               }
             } else {
-              currentTeam.scoreRemaining = 0;
-              this.handleVictory(currentTeam);
+              isWin = true;
+            }
+          }
+
+          if (isBust) {
+            sound.playBust();
+            const currentTurnSum = this.currentDarts.reduce((acc, d) => acc + d.score, 0);
+            team.score = team.score + currentTurnSum - dartObj.score;
+            endTurnEarly = true;
+
+            this.turnHistory.unshift({
+              turn: this.activeTurn,
+              player: currentPlayer,
+              team: team.name,
+              darts: [...this.currentDarts],
+              sum: 0,
+              isBust: true,
+              remaining: team.score
+            });
+          } else {
+            team.score = newScore;
+            team.totalThrows++;
+            team.totalScored += dartObj.score;
+
+            if (isWin) {
+              this.handleMatchWin(team);
               return;
             }
-          } else {
-            currentTeam.scoreRemaining = remaining;
           }
         } else {
-          const sequence = (gs.mode === 'world') ? ORDER_AROUND_THE_WORLD : ORDER_AROUND_THE_CLOCK;
-          const currentTargetVal = sequence[currentTeam.targetIndex];
+          // AROUND THE WORLD / AROUND THE CLOCK
+          const seq = this.matchType === 'world' ? AROUND_THE_WORLD_SECTORS : AROUND_THE_CLOCK_SECTORS;
+          const finalIndex = seq.length - 1; // Index 20 -> sector 25
+          const currentGoal = seq[team.currentStep];
 
-          if (currentTargetVal === 25) {
-            if (dart.sector === 25 || dart.sector === 50) {
-              this.handleVictory(currentTeam);
-              return;
-            }
+          let matched = false;
+          if (currentGoal === 25) {
+            // Must hit Outer Bull (25) or Bullseye (50) to win
+            matched = (dartObj.value === 25 || dartObj.value === 50);
           } else {
-            if (dart.sector === currentTargetVal) {
-              const step = Math.min(dart.multiplier, 3);
-              const nextIndex = currentTeam.targetIndex + step;
-              const maxBullIndex = sequence.length - 1;
+            matched = (dartObj.value === currentGoal);
+          }
 
-              if (nextIndex >= maxBullIndex) {
-                currentTeam.targetIndex = maxBullIndex;
-              } else {
-                currentTeam.targetIndex = nextIndex;
+          if (matched) {
+            sound.playTargetSuccess();
+
+            if (currentGoal === 25) {
+              team.currentStep = finalIndex;
+              this.handleMatchWin(team);
+              return;
+            } else {
+              // ADVANCING TOWARDS BULL:
+              // S = +1, D = +2, T = +3. MANDATORY RULE: Caps at finalIndex (25).
+              const advance = dartObj.multiplier || 1;
+              let nextStep = team.currentStep + advance;
+
+              if (nextStep >= finalIndex) {
+                nextStep = finalIndex;
               }
+
+              team.currentStep = nextStep;
             }
           }
+          team.totalThrows++;
         }
 
-        if (gs.currentTurnDarts.length === 3 || turnShouldAdvance) {
-          const lastTurnDarts = [...gs.currentTurnDarts];
-          if (!isBust && lastTurnDarts.length === 3) {
-            this.checkTurnCelebration(lastTurnDarts);
+        if (this.currentDarts.length >= 3 || endTurnEarly) {
+          if (!isBust && this.matchType === 'classic') {
+            const turnSum = this.currentDarts.reduce((acc, d) => acc + d.score, 0);
+            this.turnHistory.unshift({
+              turn: this.activeTurn,
+              player: currentPlayer,
+              team: team.name,
+              darts: [...this.currentDarts],
+              sum: turnSum,
+              isBust: false,
+              remaining: team.score
+            });
+          } else if (this.matchType !== 'classic') {
+            const turnSum = this.currentDarts.reduce((acc, d) => acc + d.score, 0);
+            this.turnHistory.unshift({
+              turn: this.activeTurn,
+              player: currentPlayer,
+              team: team.name,
+              darts: [...this.currentDarts],
+              sum: turnSum,
+              currentStep: team.currentStep
+            });
           }
 
-          gs.currentTurnDarts = [];
-          gs.activePlayerIndices[gs.activeTeamIndex] = (gs.activePlayerIndices[gs.activeTeamIndex] + 1) % currentTeam.players.length;
-          gs.activeTeamIndex = (gs.activeTeamIndex === 0) ? 1 : 0;
-          gs.turnStartScoreRemaining = gs.teams[gs.activeTeamIndex].scoreRemaining;
+          this.activePlayerIdx[this.activeTeamIdx] = (this.activePlayerIdx[this.activeTeamIdx] + 1) % team.players.length;
+          this.activeTeamIdx = this.activeTeamIdx === 0 ? 1 : 0;
+          this.activeTurn++;
+          this.currentDarts = [];
+          this.updateDartsSlotsUi();
+          this.updateTurnHistoryUi();
         }
 
-        this.updateGameplayUI();
-      },
+        this.renderArenaUi();
+      }
 
-      checkTurnCelebration(darts) {
-        if (!darts || darts.length !== 3) return;
+      updateDartsSlotsUi() {
+        const container = document.getElementById('currentDartsDisplay');
+        if (!container) return;
+        container.innerHTML = '';
 
-        const is180 = darts.every(d => d.sector === 20 && d.multiplier === 3);
-        if (is180) {
-          triggerCelebration(180);
-          return;
-        }
-
-        const t20Count = darts.filter(d => d.sector === 20 && d.multiplier === 3).length;
-        const dBullCount = darts.filter(d => d.sector === 50).length;
-        if (t20Count === 2 && dBullCount === 1) {
-          triggerCelebration(170);
-          return;
-        }
-      },
-
-      handleVictory(winningTeam) {
-        if (typeof confetti === 'function') {
-          confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
-        }
-        playCelebrationFanfare();
-
-        this.gameState.winner = winningTeam.name;
-        this.saveMatchResult(winningTeam);
-        this.showVictoryReport(winningTeam);
-      },
-
-      updateGameplayUI() {
-        const gs = this.gameState;
-        if (!gs) return;
-
-        for (let i = 1; i <= 3; i++) {
-          const slot = document.getElementById(`dartSlot${i}`);
-          const dart = gs.currentTurnDarts[i - 1];
+        for (let i = 0; i < 3; i++) {
+          const dart = this.currentDarts[i];
+          const div = document.createElement('div');
           if (dart) {
-            slot.textContent = dart.label;
-            slot.className = "w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/60 flex items-center justify-center font-black text-xs text-amber-300 shadow-inner";
+            div.className = 'w-16 sm:w-20 h-11 rounded-xl bg-gray-800 border-2 border-emerald-500/80 flex flex-col items-center justify-center shadow-sm';
+            div.innerHTML = `<span class="text-xs font-black text-emerald-400">${dart.label}</span><span class="text-[10px] text-gray-400">${dart.score} pt</span>`;
           } else {
-            slot.textContent = "-";
-            slot.className = "w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-500 shadow-inner";
+            div.className = 'w-16 sm:w-20 h-11 rounded-xl bg-gray-950/80 border border-dashed border-gray-700 flex items-center justify-center text-xs text-gray-500 font-bold';
+            div.textContent = `Freccia ${i + 1}`;
           }
+          container.appendChild(div);
         }
+      }
 
-        const badge = document.getElementById('gameModeBadge');
-        const sub = document.getElementById('gameSubDetail');
-        const scoreboard = document.getElementById('scoreboardContainer');
-        const targetBanner = document.getElementById('liveTargetBanner');
+      handleMatchWin(winningTeam) {
+        sound.playVictory();
+        if (window.confetti) {
+          window.confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
+        }
+        app.showSummaryScreen({
+          title: "VITTORIA!",
+          subtitle: `${winningTeam.name} ha vinto la sfida!`,
+          type: this.matchType,
+          winner: winningTeam.name,
+          teams: this.matchState.teams,
+          turns: this.activeTurn
+        });
+      }
 
-        if (gs.type === 'training') {
-          badge.textContent = "Allenamento";
-          badge.className = "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30";
-          sub.textContent = `${gs.playerName} • ${gs.mode === 'target' ? 'Bersagli Casuali' : 'Tiro Libero'}`;
+      abortMatch() {
+        app.navigate('home');
+      }
 
-          const avg3 = gs.dartsCount > 0 ? ((gs.totalScore / gs.dartsCount) * 3).toFixed(1) : "0.0";
-
-          if (gs.mode === 'target') {
-            const hitPct = gs.targetAttempts > 0 ? Math.round((gs.targetHits / gs.targetAttempts) * 100) : 0;
-            scoreboard.innerHTML = `
-              <div class="grid grid-cols-3 gap-2">
-                <div class="glass-panel p-3 rounded-xl text-center">
-                  <div class="text-[10px] text-slate-400 font-bold uppercase">Centrati</div>
-                  <div class="text-xl sm:text-2xl font-black text-amber-400">${gs.targetHits} <span class="text-xs font-normal text-slate-400">/ ${gs.targetAttempts}</span></div>
-                </div>
-                <div class="glass-panel p-3 rounded-xl text-center">
-                  <div class="text-[10px] text-slate-400 font-bold uppercase">Precisione</div>
-                  <div class="text-xl sm:text-2xl font-black text-white">${hitPct}%</div>
-                </div>
-                <div class="glass-panel p-3 rounded-xl text-center">
-                  <div class="text-[10px] text-slate-400 font-bold uppercase">Streak Attuale</div>
-                  <div class="text-xl sm:text-2xl font-black text-emerald-400">${gs.currentStreak} <span class="text-xs text-slate-400 font-normal">(max ${gs.bestStreak})</span></div>
-                </div>
-              </div>
-            `;
-
-            targetBanner.innerHTML = `
-              <div class="text-xs uppercase font-extrabold tracking-widest text-slate-400 mb-1">Obiettivo da Colpire</div>
-              <div class="text-3xl sm:text-4xl font-black text-amber-400 tracking-tight">${gs.currentTarget.label}</div>
-            `;
-          } else {
-            scoreboard.innerHTML = `
-              <div class="grid grid-cols-3 gap-2">
-                <div class="glass-panel p-3 rounded-xl text-center">
-                  <div class="text-[10px] text-slate-400 font-bold uppercase">Punti Totali</div>
-                  <div class="text-xl sm:text-2xl font-black text-white">${gs.totalScore}</div>
-                </div>
-                <div class="glass-panel p-3 rounded-xl text-center">
-                  <div class="text-[10px] text-slate-400 font-bold uppercase">Dardi Tirati</div>
-                  <div class="text-xl sm:text-2xl font-black text-amber-400">${gs.dartsCount}</div>
-                </div>
-                <div class="glass-panel p-3 rounded-xl text-center">
-                  <div class="text-[10px] text-slate-400 font-bold uppercase">Media 3 Dardi</div>
-                  <div class="text-xl sm:text-2xl font-black text-emerald-400">${avg3}</div>
-                </div>
-              </div>
-            `;
-
-            targetBanner.innerHTML = `
-              <div class="text-xs text-slate-400">Lancia liberamente al bersaglio per affinare tiro e ritmo</div>
-            `;
-          }
+      rematch() {
+        if (this.sessionType === 'training') {
+          trainCtrl.startSession();
         } else {
-          const modeTitle = gs.mode === 'x01' ? `Classica ${gs.x01Points}` : (gs.mode === 'world' ? 'Around the World' : 'Around the Clock');
-          badge.textContent = modeTitle;
-          badge.className = "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+          matchCtrl.startMatch();
+        }
+      }
 
-          const activeTeam = gs.teams[gs.activeTeamIndex];
-          const activePlayer = activeTeam.players[gs.activePlayerIndices[gs.activeTeamIndex]];
-          sub.textContent = `Turno: ${activeTeam.name} (${activePlayer})`;
+      renderArenaUi() {
+        const header = document.getElementById('playHeader');
+        const targetCard = document.getElementById('liveTargetCard');
+        if (!header || !targetCard) return;
 
-          let sbHtml = '<div class="grid grid-cols-2 gap-3">';
-          gs.teams.forEach((t, idx) => {
-            const isActive = idx === gs.activeTeamIndex;
-            const borderClass = isActive ? 'border-emerald-500 ring-1 ring-emerald-500/50 bg-slate-900/90' : 'border-slate-800 glass-panel';
-            const curP = t.players[gs.activePlayerIndices[idx]];
-
-            let mainDisplay = '';
-            let subDisplay = '';
-
-            if (gs.mode === 'x01') {
-              mainDisplay = t.scoreRemaining;
-              const avg = t.dartsThrown > 0 ? ((t.totalPointsScored / t.dartsThrown) * 3).toFixed(1) : "0.0";
-              subDisplay = `Media 3D: ${avg} • Dardi: ${t.dartsThrown}`;
-            } else {
-              const seq = gs.mode === 'world' ? ORDER_AROUND_THE_WORLD : ORDER_AROUND_THE_CLOCK;
-              const targetVal = seq[t.targetIndex];
-              mainDisplay = targetVal === 25 ? 'BULL' : targetVal;
-              subDisplay = `Bersaglio ${t.targetIndex + 1}/${seq.length} • Dardi: ${t.dartsThrown}`;
-            }
-
-            sbHtml += `
-              <div class="p-3 sm:p-4 rounded-2xl ${borderClass} transition-all duration-200">
-                <div class="flex items-center justify-between text-xs mb-1">
-                  <span class="font-extrabold truncate text-white">${t.name}</span>
-                  ${isActive ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px] animate-pulse">AL TIRO</span>' : ''}
+        if (this.sessionType === 'training') {
+          header.innerHTML = `
+            <div class="flex items-center justify-between w-full">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <i data-lucide="crosshair" class="w-4 h-4"></i>
                 </div>
-                <div class="text-[11px] text-slate-400 truncate mb-2">Giocatore: <span class="text-slate-200 font-semibold">${curP}</span></div>
-                <div class="text-3xl sm:text-5xl font-black tracking-tight text-white mb-1">${mainDisplay}</div>
-                <div class="text-[10px] text-slate-400">${subDisplay}</div>
+                <div>
+                  <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold block">Allenamento (${this.trainState.subMode === 'random' ? 'Bersagli' : 'Libero'})</span>
+                  <span class="text-base font-black text-white">${this.trainState.playerName}</span>
+                </div>
               </div>
-            `;
-          });
-          sbHtml += '</div>';
-          scoreboard.innerHTML = sbHtml;
-
-          if (gs.mode === 'x01') {
-            const rem = activeTeam.scoreRemaining;
-            const checkout = CHECKOUTS[rem];
-            if (rem <= 170 && checkout) {
-              targetBanner.innerHTML = `
-                <div class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Combinazione di Chiusura Consigliata</div>
-                <div class="text-base sm:text-lg font-black text-amber-300 mt-0.5">${checkout}</div>
-              `;
-            } else {
-              targetBanner.innerHTML = `
-                <div class="text-xs text-slate-400">Punteggio da scalare: <span class="text-white font-bold">${rem}</span> ${gs.checkoutRule === 'double' ? '(Chiusura col Doppio obbligatoria)' : ''}</div>
-              `;
-            }
-          } else {
-            const seq = gs.mode === 'world' ? ORDER_AROUND_THE_WORLD : ORDER_AROUND_THE_CLOCK;
-            const currentTargetVal = seq[activeTeam.targetIndex];
-            const isLastBull = (currentTargetVal === 25);
-
-            if (isLastBull) {
-              targetBanner.innerHTML = `
-                <div class="text-xs uppercase font-extrabold tracking-widest text-red-400 mb-0.5 animate-pulse">ULTIMO BERSAGLIO DECISIVO</div>
-                <div class="text-xl sm:text-2xl font-black text-white">🎯 BULL (25) o BULLSEYE (50) per VINCERE!</div>
-                <div class="text-[10px] text-slate-400 mt-1">Nessun altro settore assegna la vittoria</div>
-              `;
-            } else {
-              targetBanner.innerHTML = `
-                <div class="text-xs uppercase font-extrabold tracking-widest text-slate-400 mb-0.5">Mira al Numero</div>
-                <div class="text-2xl sm:text-3xl font-black text-amber-400">${currentTargetVal}</div>
-                <div class="text-[11px] text-slate-400 mt-0.5">Singolo (+1) • Doppio (+2) • Triplo (+3)</div>
-              `;
-            }
-          }
-        }
-      },
-
-      confirmEndSession() {
-        if (confirm("Vuoi davvero terminare la sessione in corso?")) {
-          this.endSession();
-        }
-      },
-
-      endSession() {
-        const gs = this.gameState;
-        if (!gs) return this.showHome();
-
-        if (gs.type === 'training') {
-          this.showTrainingReport();
-          if (this.trainingConfig.save) {
-            this.saveTrainingResult();
-          }
-        } else {
-          this.showVictoryReport(null);
-        }
-      },
-
-      showTrainingReport() {
-        const gs = this.gameState;
-        this.hideAllScreens();
-        document.getElementById('screenReport').classList.remove('hidden');
-
-        document.getElementById('reportTitle').textContent = "Allenamento Concluso";
-        document.getElementById('reportSubtitle').textContent = `Sessione completata da ${gs.playerName}`;
-
-        const grid = document.getElementById('reportStatsGrid');
-        const avg3 = gs.dartsCount > 0 ? ((gs.totalScore / gs.dartsCount) * 3).toFixed(1) : "0.0";
-
-        if (gs.mode === 'target') {
-          const hitPct = gs.targetAttempts > 0 ? Math.round((gs.targetHits / gs.targetAttempts) * 100) : 0;
-          grid.innerHTML = `
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Dardi Totali</div>
-              <div class="text-xl font-black text-white mt-1">${gs.dartsCount}</div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Centrati</div>
-              <div class="text-xl font-black text-amber-400 mt-1">${gs.targetHits}</div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Precisione</div>
-              <div class="text-xl font-black text-emerald-400 mt-1">${hitPct}%</div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Miglior Streak</div>
-              <div class="text-xl font-black text-amber-300 mt-1">${gs.bestStreak}</div>
+              <div class="flex items-center gap-2 text-xs font-semibold">
+                <div class="bg-gray-800/80 px-2.5 py-1 rounded-xl border border-gray-700">Dardi: <b class="text-white">${this.trainState.totalDarts}</b></div>
+                <div class="bg-gray-800/80 px-2.5 py-1 rounded-xl border border-gray-700">Streak: <b class="text-amber-400">${this.trainState.streak}</b></div>
+                <button onclick="trainCtrl.finishSession()" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-xl border border-red-500/40 transition-colors">Termina</button>
+              </div>
             </div>
           `;
+
+          if (this.trainState.subMode === 'random') {
+            const target = this.trainState.currentTarget;
+            targetCard.innerHTML = `
+              <span class="text-[11px] uppercase font-extrabold tracking-widest text-emerald-400 mb-1">BERSAGLIO DA COLPRIRE</span>
+              <div class="text-3xl sm:text-4xl font-black text-white tracking-tight my-1">
+                <span class="px-4 py-1 bg-emerald-950/80 border-2 border-emerald-500 rounded-2xl text-emerald-300 inline-block shadow-lg pulse-target">${target.name}</span>
+              </div>
+              <p class="text-[11px] text-gray-400">Tocca il tasto sul numpad appena lanci. Se lo colpisci cambia all'istante!</p>
+            `;
+          } else {
+            const avg = this.trainState.totalDarts > 0 
+              ? ((this.turnHistory.reduce((a, t) => a + t.sum, 0) / this.trainState.totalDarts) * 3).toFixed(1)
+              : '0.0';
+            targetCard.innerHTML = `
+              <span class="text-[11px] uppercase font-extrabold tracking-widest text-emerald-400 mb-0.5">TIRO LIBERO ATTIVO</span>
+              <div class="text-2xl sm:text-3xl font-black text-white my-1">Media 3 Dardi: <span class="text-emerald-400">${avg}</span></div>
+              <p class="text-[11px] text-gray-400">Ogni 3 freccette il turno si chiude automaticamente.</p>
+            `;
+          }
         } else {
-          grid.innerHTML = `
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Punti Totali</div>
-              <div class="text-xl font-black text-white mt-1">${gs.totalScore}</div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Dardi Tirati</div>
-              <div class="text-xl font-black text-amber-400 mt-1">${gs.dartsCount}</div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Media 3 Dardi</div>
-              <div class="text-xl font-black text-emerald-400 mt-1">${avg3}</div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase">Durata</div>
-              <div class="text-xl font-black text-slate-300 mt-1">${Math.round((Date.now() - gs.startTime) / 1000)}s</div>
+          // MATCH MODE
+          const teamA = this.matchState.teams[0];
+          const teamB = this.matchState.teams[1];
+          const currentTeam = this.matchState.teams[this.activeTeamIdx];
+          const curPlayer = currentTeam.players[this.activePlayerIdx[this.activeTeamIdx]];
+          const isTeamA = this.activeTeamIdx === 0;
+
+          const seq = this.matchType === 'world' ? AROUND_THE_WORLD_SECTORS : AROUND_THE_CLOCK_SECTORS;
+          const totalSteps = seq.length; // 21
+
+          header.innerHTML = `
+            <div class="flex items-center justify-between w-full gap-2">
+              <!-- Team A -->
+              <div class="flex-1 p-2.5 rounded-2xl border transition-all ${isTeamA ? 'bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> ${teamA.name}</span>
+                  <span class="text-[10px] text-gray-400">${teamA.players.join(', ')}</span>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                  ${this.matchType === 'classic' ? teamA.score : `${teamA.currentStep + 1} / ${totalSteps}`}
+                </div>
+              </div>
+
+              <!-- Center VS / Turn -->
+              <div class="px-2 text-center">
+                <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest block">TURNO ${this.activeTurn}</span>
+                <span class="text-[11px] text-gray-400">Tira: <b class="text-white">${curPlayer}</b></span>
+              </div>
+
+              <!-- Team B -->
+              <div class="flex-1 p-2.5 rounded-2xl border transition-all text-right ${!isTeamA ? 'bg-red-500/15 border-red-500 shadow-md shadow-red-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
+                <div class="flex items-center justify-between flex-row-reverse">
+                  <span class="text-xs font-bold uppercase text-red-400 flex items-center gap-1">${teamB.name} <i data-lucide="shield" class="w-3 h-3"></i></span>
+                  <span class="text-[10px] text-gray-400">${teamB.players.join(', ')}</span>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                  ${this.matchType === 'classic' ? teamB.score : `${teamB.currentStep + 1} / ${totalSteps}`}
+                </div>
+              </div>
             </div>
           `;
+
+          if (this.matchType === 'classic') {
+            const currentScore = currentTeam.score;
+            const doubleReq = this.config.classicOut === 'double';
+            const checkout = getCheckoutTip(currentScore, doubleReq);
+
+            targetCard.innerHTML = `
+              <div class="flex items-center justify-between w-full mb-1">
+                <span class="text-[11px] font-extrabold uppercase text-amber-400 flex items-center gap-1">
+                  <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Suggerimento Chiusura (${curPlayer}):
+                </span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full ${doubleReq ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">
+                  ${doubleReq ? 'Double Out Obbligatorio' : 'Finitura Diretta'}
+                </span>
+              </div>
+              <div class="text-lg sm:text-xl font-black text-amber-300 my-0.5">${checkout}</div>
+              <p class="text-[10px] text-gray-400">Punti rimasti a tabellone: <b class="text-white">${currentScore}</b></p>
+            `;
+          } else {
+            const curStep = currentTeam.currentStep;
+            const nextSector = seq[curStep] !== undefined ? seq[curStep] : 25;
+            const isFinalBull = (nextSector === 25 || curStep >= seq.length - 1);
+
+            if (isFinalBull) {
+              targetCard.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1">
+                    <i data-lucide="flame" class="w-3.5 h-3.5"></i> TIRO DIRETTO PER LA VITTORIA
+                  </span>
+                  <span class="text-[10px] text-gray-400">Tocca a: <b class="text-white">${curPlayer}</b></span>
+                </div>
+                <div class="inline-block px-5 py-2 rounded-2xl bg-red-950/80 border-2 border-red-500 text-red-300 text-2xl sm:text-3xl font-black my-1 pulse-target shadow-lg">
+                  🎯 BULL (25) o BULLSEYE (50)
+                </div>
+                <p class="text-[11px] text-amber-300 font-bold">DEVI colpire il Bull o Bullseye per vincere la partita!</p>
+              `;
+            } else {
+              targetCard.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400">
+                    ${this.matchType === 'world' ? 'AROUND THE WORLD (Senso Orario)' : 'AROUND THE CLOCK (1..20 + 25)'}
+                  </span>
+                  <span class="text-[10px] text-gray-400">Obiettivo per: <b class="text-white">${curPlayer}</b></span>
+                </div>
+                <div class="inline-block px-5 py-1.5 rounded-2xl bg-amber-500/20 border-2 border-amber-500 text-amber-300 text-2xl sm:text-3xl font-black my-1 shadow">
+                  SETTORE ${nextSector}
+                </div>
+                <p class="text-[10px] text-gray-400">Regola: <b>S (+1) &bull; D (+2) &bull; T (+3)</b>. Chiusura mandatoria al <b>25 / Bull</b> finale!</p>
+              `;
+            }
+          }
         }
-      },
+        lucide.createIcons();
+      }
 
-      showVictoryReport(winnerTeam) {
-        const gs = this.gameState;
-        this.hideAllScreens();
-        document.getElementById('screenReport').classList.remove('hidden');
+      updateTurnHistoryUi() {
+        const list = document.getElementById('turnHistoryList');
+        if (!list) return;
+        if (this.turnHistory.length === 0) {
+          list.innerHTML = `<p class="text-gray-500 italic py-1 text-center">Nessun tiro registrato.</p>`;
+          return;
+        }
 
-        if (winnerTeam) {
-          document.getElementById('reportTitle').textContent = `Vittoria per ${winnerTeam.name}!`;
-          document.getElementById('reportSubtitle').textContent = `Congratulazioni ai vincitori!`;
+        list.innerHTML = this.turnHistory.map(item => `
+          <div class="flex items-center justify-between p-1.5 rounded-xl bg-gray-800/40 border border-gray-700/50">
+            <div>
+              <span class="font-bold text-white text-[11px]">${item.player || 'Turno'}</span>
+              <span class="text-[10px] text-gray-400 ml-1">(${item.darts.map(d => d.label).join(', ')})</span>
+            </div>
+            <div class="text-right">
+              <span class="font-black ${item.isBust ? 'text-red-400 line-through' : 'text-emerald-400'} text-[11px]">
+                ${item.isBust ? 'BUST' : `+${item.sum}`}
+              </span>
+              ${item.remaining !== undefined ? `<span class="text-[9px] text-gray-400 block">rimasti: ${item.remaining}</span>` : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+    const playCtrl = new PlayController();
+  </script>
+
+  <!-- TRAINING CONTROLLER -->
+  <script>
+    class TrainingController {
+      constructor() {
+        this.subMode = 'random'; // 'random' | 'free'
+      }
+
+      setSubMode(mode) {
+        this.subMode = mode;
+        const btnR = document.getElementById('trainModeRandom');
+        const btnF = document.getElementById('trainModeFree');
+        const diffBlock = document.getElementById('trainTargetSettings');
+        const desc = document.getElementById('trainSubmodeDesc');
+
+        if (mode === 'random') {
+          btnR.className = 'p-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs text-center flex flex-col items-center gap-1';
+          btnF.className = 'p-3 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-semibold text-xs text-center flex flex-col items-center gap-1';
+          diffBlock.classList.remove('hidden');
+          desc.textContent = 'Un bersaglio casuale da centrare. Se lo colpisci, passa immediatamente a quello successivo!';
         } else {
-          document.getElementById('reportTitle').textContent = "Partita Terminata";
-          document.getElementById('reportSubtitle').textContent = "Resoconto delle squadre";
+          btnF.className = 'p-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs text-center flex flex-col items-center gap-1';
+          btnR.className = 'p-3 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-semibold text-xs text-center flex flex-col items-center gap-1';
+          diffBlock.classList.add('hidden');
+          desc.textContent = 'Lancia liberamente, calcola la tua media su 3 frecce e salva i tuoi progressi nel database.';
+        }
+      }
+
+      generateRandomTarget() {
+        const diff = document.getElementById('trainDifficulty').value;
+        const numbers = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+        const num = numbers[Math.floor(Math.random() * numbers.length)];
+
+        let multiplier = 1;
+        if (diff === 'doubles') multiplier = 2;
+        else if (diff === 'triples') multiplier = 3;
+        else if (diff === 'singles') multiplier = 1;
+        else {
+          const roll = Math.random();
+          if (roll < 0.45) multiplier = 1;
+          else if (roll < 0.75) multiplier = 2;
+          else if (roll < 0.95) multiplier = 3;
+          else {
+            playCtrl.trainState.currentTarget = {
+              isBull: true,
+              value: Math.random() > 0.5 ? 50 : 25,
+              name: Math.random() > 0.5 ? "Bullseye (50)" : "Outer Bull (25)"
+            };
+            return;
+          }
         }
 
-        const grid = document.getElementById('reportStatsGrid');
-        grid.innerHTML = gs.teams.map(t => {
-          const avg = t.dartsThrown > 0 ? ((t.totalPointsScored / t.dartsThrown) * 3).toFixed(1) : "0.0";
+        const multName = multiplier === 3 ? 'Triplo' : (multiplier === 2 ? 'Doppio' : 'Singolo');
+        playCtrl.trainState.currentTarget = {
+          isBull: false,
+          number: num,
+          multiplier: multiplier,
+          name: `${multName} ${num}`
+        };
+      }
+
+      startSession() {
+        const playerName = document.getElementById('trainPlayerName').value.trim() || 'Tiratore';
+        const saveDb = document.getElementById('trainSaveDb').checked;
+
+        playCtrl.sessionType = 'training';
+        playCtrl.matchType = null;
+        playCtrl.currentDarts = [];
+        playCtrl.turnHistory = [];
+        playCtrl.historySnapshots = [];
+        playCtrl.activeTurn = 1;
+        playCtrl.trainState = {
+          playerName: playerName,
+          subMode: this.subMode,
+          saveDb: saveDb,
+          totalDarts: 0,
+          successfulTargets: 0,
+          streak: 0,
+          bestStreak: 0,
+          currentTarget: null
+        };
+
+        if (this.subMode === 'random') {
+          this.generateRandomTarget();
+        }
+
+        app.navigate('play');
+        playCtrl.renderArenaUi();
+        playCtrl.updateDartsSlotsUi();
+        playCtrl.updateTurnHistoryUi();
+      }
+
+      finishSession() {
+        const state = playCtrl.trainState;
+        const totalScore = playCtrl.turnHistory.reduce((a, t) => a + t.sum, 0);
+        const avg3Darts = state.totalDarts > 0 ? ((totalScore / state.totalDarts) * 3).toFixed(1) : '0.0';
+        const accuracy = state.totalDarts > 0 ? Math.round((state.successfulTargets / state.totalDarts) * 100) : 0;
+
+        const record = {
+          type: 'training',
+          subMode: state.subMode,
+          playerName: state.playerName,
+          totalDarts: state.totalDarts,
+          successfulTargets: state.successfulTargets,
+          accuracy: accuracy,
+          bestStreak: state.bestStreak,
+          average3Darts: avg3Darts,
+          totalScore: totalScore,
+          date: new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        if (state.saveDb && window.rtDbService) {
+          window.rtDbService.saveSession(record);
+        }
+
+        app.showSummaryScreen({
+          title: "ALLENAMENTO CONCLUSO",
+          subtitle: `Sessione completata per ${state.playerName}`,
+          type: 'training',
+          subMode: state.subMode,
+          record: record
+        });
+      }
+    }
+    const trainCtrl = new TrainingController();
+  </script>
+
+  <!-- MATCH SETUP CONTROLLER -->
+  <script>
+    class MatchSetupController {
+      constructor() {
+        this.selectedType = 'classic';
+        this.selectedFormat = 1;
+      }
+
+      setType(t) {
+        this.selectedType = t;
+        ['btnModeClassic', 'btnModeWorld', 'btnModeClock'].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.className = 'p-2.5 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs text-center';
+        });
+
+        const activeId = t === 'classic' ? 'btnModeClassic' : (t === 'world' ? 'btnModeWorld' : 'btnModeClock');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) {
+          activeBtn.className = 'p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs text-center';
+        }
+
+        const classicOpts = document.getElementById('classicOptions');
+        const help = document.getElementById('gameTypeHelp');
+
+        if (t === 'classic') {
+          classicOpts.classList.remove('hidden');
+          help.textContent = 'Scala i punti fino a 0. Supporta Straight Out o Double Out.';
+        } else if (t === 'world') {
+          classicOpts.classList.add('hidden');
+          help.textContent = 'Giro orario da destra del 20 (1..20). S (+1), D (+2), T (+3). Per vincere è OBBLIGATORIO beccare 25 o Bullseye!';
+        } else {
+          classicOpts.classList.add('hidden');
+          help.textContent = 'Giro da 1 a 20. S (+1), D (+2), T (+3). Per vincere è OBBLIGATORIO beccare 25 o Bullseye!';
+        }
+      }
+
+      setFormat(f) {
+        this.selectedFormat = f;
+        [1, 2, 3].forEach(n => {
+          const btn = document.getElementById(`btnFormat${n}v${n}`);
+          if (btn) btn.className = 'py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs';
+        });
+        const active = document.getElementById(`btnFormat${f}v${f}`);
+        if (active) active.className = 'py-2 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs';
+
+        for (let i = 2; i <= 3; i++) {
+          const inpA = document.getElementById(`teamA_p${i}`);
+          const inpB = document.getElementById(`teamB_p${i}`);
+          if (i <= f) {
+            inpA.classList.remove('hidden');
+            inpB.classList.remove('hidden');
+          } else {
+            inpA.classList.add('hidden');
+            inpB.classList.add('hidden');
+          }
+        }
+      }
+
+      startMatch() {
+        const teamAPlayers = [];
+        const teamBPlayers = [];
+        for (let i = 1; i <= this.selectedFormat; i++) {
+          teamAPlayers.push(document.getElementById(`teamA_p${i}`).value.trim() || `Giocatore A${i}`);
+          teamBPlayers.push(document.getElementById(`teamB_p${i}`).value.trim() || `Giocatore B${i}`);
+        }
+
+        const startScore = parseInt(document.getElementById('classicStartingScore').value) || 501;
+        const outRule = document.getElementById('classicOutRule').value;
+
+        playCtrl.sessionType = 'match';
+        playCtrl.matchType = this.selectedType;
+        playCtrl.currentDarts = [];
+        playCtrl.turnHistory = [];
+        playCtrl.historySnapshots = [];
+        playCtrl.activeTurn = 1;
+        playCtrl.activeTeamIdx = 0;
+        playCtrl.activePlayerIdx = { 0: 0, 1: 0 };
+        playCtrl.config = {
+          classicStart: startScore,
+          classicOut: outRule,
+          format: this.selectedFormat
+        };
+
+        playCtrl.matchState = {
+          teams: [
+            {
+              id: 'teamA',
+              name: this.selectedFormat === 1 ? teamAPlayers[0] : 'Squadra A',
+              players: teamAPlayers,
+              score: startScore,
+              currentStep: 0,
+              totalThrows: 0,
+              totalScored: 0
+            },
+            {
+              id: 'teamB',
+              name: this.selectedFormat === 1 ? teamBPlayers[0] : 'Squadra B',
+              players: teamBPlayers,
+              score: startScore,
+              currentStep: 0,
+              totalThrows: 0,
+              totalScored: 0
+            }
+          ]
+        };
+
+        app.navigate('play');
+        playCtrl.renderArenaUi();
+        playCtrl.updateDartsSlotsUi();
+        playCtrl.updateTurnHistoryUi();
+      }
+    }
+    const matchCtrl = new MatchSetupController();
+  </script>
+
+  <!-- NAVIGATION & SUMMARY MANAGER -->
+  <script>
+    class AppManager {
+      constructor() {
+        this.currentScreen = 'home';
+      }
+
+      init() {
+        keypad.init();
+        fireworks.init();
+        this.navigate('home');
+        lucide.createIcons();
+      }
+
+      navigate(screenId) {
+        const screens = [
+          'screen-home',
+          'screen-training-config',
+          'screen-match-config',
+          'screen-play',
+          'screen-summary',
+          'screen-stats'
+        ];
+        screens.forEach(s => {
+          const el = document.getElementById(s);
+          if (el) el.classList.add('hidden');
+        });
+
+        const target = document.getElementById(`screen-${screenId}`);
+        if (target) {
+          target.classList.remove('hidden');
+          this.currentScreen = screenId;
+        }
+
+        if (screenId === 'stats') {
+          statsCtrl.loadAndRender();
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        lucide.createIcons();
+      }
+
+      startTrainingConfig() {
+        this.navigate('training-config');
+      }
+
+      startMatchConfig() {
+        this.navigate('match-config');
+      }
+
+      showSummaryScreen(data) {
+        this.navigate('summary');
+        const titleEl = document.getElementById('summaryTitle');
+        const subEl = document.getElementById('summarySubtitle');
+        const grid = document.getElementById('summaryStatsGrid');
+        const bdown = document.getElementById('summaryBreakdown');
+
+        titleEl.textContent = data.title;
+        subEl.textContent = data.subtitle;
+
+        if (data.type === 'training') {
+          const rec = data.record;
+          grid.innerHTML = `
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Dardi Totali</span>
+              <span class="text-lg font-black text-white">${rec.totalDarts}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Bersagli Centrati</span>
+              <span class="text-lg font-black text-emerald-400">${rec.successfulTargets}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Precisione</span>
+              <span class="text-lg font-black text-blue-400">${rec.accuracy}%</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Miglior Streak</span>
+              <span class="text-lg font-black text-amber-400">${rec.bestStreak}</span>
+            </div>
+          `;
+          bdown.innerHTML = `<p>Allenamento registrato con successo. Media 3 dardi: <b>${rec.average3Darts}</b> punti.</p>`;
+        } else {
+          const tA = data.teams[0];
+          const tB = data.teams[1];
+          const totThrows = tA.totalThrows + tB.totalThrows;
+
+          grid.innerHTML = `
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Vincitore</span>
+              <span class="text-base font-black text-emerald-400">${data.winner}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Turni Totali</span>
+              <span class="text-base font-black text-white">${data.turns}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Frecce Lanciate</span>
+              <span class="text-base font-black text-blue-400">${totThrows}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Modalità</span>
+              <span class="text-base font-black text-amber-400 uppercase">${data.type}</span>
+            </div>
+          `;
+
+          bdown.innerHTML = `
+            <div class="space-y-1">
+              <p><b>${tA.name}</b>: ${tA.totalThrows} frecce tirate &bull; ${tA.totalScored} punti</p>
+              <p><b>${tB.name}</b>: ${tB.totalThrows} frecce tirate &bull; ${tB.totalScored} punti</p>
+            </div>
+          `;
+
+          if (window.rtDbService) {
+            window.rtDbService.saveSession({
+              type: 'match',
+              matchType: data.type,
+              winner: data.winner,
+              teamA: tA.name,
+              teamB: tB.name,
+              totalTurns: data.turns,
+              date: new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            });
+          }
+        }
+      }
+    }
+    const app = new AppManager();
+  </script>
+
+  <!-- STATISTICS & CLOUD HISTORY CONTROLLER -->
+  <script>
+    class StatisticsController {
+      constructor() {
+        this.activeFilter = 'all';
+      }
+
+      filter(f) {
+        this.activeFilter = f;
+        ['tabStatsAll', 'tabStatsTrain', 'tabStatsMatch'].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.className = 'px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 font-semibold text-xs';
+        });
+
+        const activeId = f === 'all' ? 'tabStatsAll' : (f === 'training' ? 'tabStatsTrain' : 'tabStatsMatch');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) activeBtn.className = 'px-3 py-1.5 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs';
+
+        this.loadAndRender();
+      }
+
+      loadAndRender() {
+        const history = window.rtDbService ? window.rtDbService.getLocalHistory() : [];
+        const container = document.getElementById('statsHistoryList');
+        if (!container) return;
+
+        let totDarts = 0;
+        let totAccuracySum = 0;
+        let trainCount = 0;
+
+        history.forEach(item => {
+          if (item.type === 'training') {
+            totDarts += (item.totalDarts || 0);
+            if (item.accuracy !== undefined) {
+              totAccuracySum += item.accuracy;
+              trainCount++;
+            }
+          }
+        });
+
+        document.getElementById('statTotSessions').textContent = history.length;
+        document.getElementById('statTotDarts').textContent = totDarts;
+        document.getElementById('statAccuracy').textContent = trainCount > 0 ? Math.round(totAccuracySum / trainCount) + '%' : '0%';
+
+        const filtered = history.filter(item => {
+          if (this.activeFilter === 'training') return item.type === 'training';
+          if (this.activeFilter === 'matches') return item.type === 'match';
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = `
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 text-center text-gray-500 text-xs">
+              <i data-lucide="inbox" class="w-7 h-7 mx-auto mb-1.5 opacity-40"></i>
+              Nessuna sessione trovata in cronologia.
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        container.innerHTML = filtered.map(item => {
+          const isTrain = item.type === 'training';
           return `
-            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center col-span-2">
-              <div class="text-xs font-bold text-amber-400">${t.name}</div>
-              <div class="text-[11px] text-slate-400 mt-0.5">${t.players.join(', ')}</div>
-              <div class="flex justify-around mt-2 text-xs">
-                <div>Dardi: <span class="font-bold text-white">${t.dartsThrown}</span></div>
-                <div>Media 3D: <span class="font-bold text-emerald-400">${avg}</span></div>
-                ${gs.mode === 'x01' ? `<div>Rimanenti: <span class="font-bold text-amber-300">${t.scoreRemaining}</span></div>` : ''}
+            <div class="bg-gray-900/80 border border-gray-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl ${isTrain ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
+                  <i data-lucide="${isTrain ? 'crosshair' : 'trophy'}" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-white">${isTrain ? `Allenamento (${item.playerName || 'Solo'})` : `Partita ${item.matchType?.toUpperCase() || ''}`}</h4>
+                  <p class="text-[10px] text-gray-400">${item.date || 'Recente'} &bull; ${isTrain ? `${item.totalDarts || 0} dardi &bull; Acc: ${item.accuracy || 0}%` : `Vincitore: ${item.winner}`}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${isTrain ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                  ${isTrain ? `Avg 3d: ${item.average3Darts || '0'}` : `${item.teamA} vs ${item.teamB}`}
+                </span>
               </div>
             </div>
           `;
         }).join('');
-      },
-
-      restartSameSession() {
-        if (this.currentType === 'training') {
-          this.startTraining();
-        } else {
-          this.startMatch();
-        }
-      },
-
-      saveTrainingResult() {
-        const gs = this.gameState;
-        const statusElem = document.getElementById('reportSaveStatus');
-        statusElem.textContent = "Salvataggio su Firebase Realtime DB...";
-
-        const record = {
-          playerName: gs.playerName,
-          mode: gs.mode,
-          dartsCount: gs.dartsCount,
-          totalScore: gs.totalScore,
-          avg3: gs.dartsCount > 0 ? ((gs.totalScore / gs.dartsCount) * 3).toFixed(1) : 0,
-          targetHits: gs.targetHits || 0,
-          targetAttempts: gs.targetAttempts || 0,
-          bestStreak: gs.bestStreak || 0,
-          timestamp: Date.now(),
-          dateString: new Date().toLocaleString('it-IT')
-        };
-
-        if (fbDb) {
-          const sessionsRef = ref(fbDb, 'training_sessions');
-          const newSessionRef = push(sessionsRef);
-          set(newSessionRef, record).then(() => {
-            statusElem.textContent = "✓ Sessione salvata con successo nel database Firebase!";
-          }).catch(err => {
-            console.error("Errore Firebase:", err);
-            statusElem.textContent = "Salvato localmente (offline)";
-            this.saveLocal('training_sessions', record);
-          });
-        } else {
-          this.saveLocal('training_sessions', record);
-          statusElem.textContent = "Salvato localmente nel browser (offline)";
-        }
-      },
-
-      saveMatchResult(winnerTeam) {
-        const gs = this.gameState;
-        const record = {
-          mode: gs.mode,
-          format: `${gs.teamFormat}v${gs.teamFormat}`,
-          teams: gs.teams.map(t => ({
-            name: t.name,
-            players: t.players,
-            dartsThrown: t.dartsThrown,
-            avg3: t.dartsThrown > 0 ? ((t.totalPointsScored / t.dartsThrown) * 3).toFixed(1) : 0
-          })),
-          winner: winnerTeam ? winnerTeam.name : 'Incompleta',
-          timestamp: Date.now(),
-          dateString: new Date().toLocaleString('it-IT')
-        };
-
-        if (fbDb) {
-          const matchRef = ref(fbDb, 'matches');
-          const newMatch = push(matchRef);
-          set(newMatch, record).catch(err => {
-            console.error("Errore match su Firebase:", err);
-            this.saveLocal('matches', record);
-          });
-        } else {
-          this.saveLocal('matches', record);
-        }
-      },
-
-      saveLocal(collection, data) {
-        try {
-          const existing = JSON.parse(localStorage.getItem(collection) || '[]');
-          existing.unshift(data);
-          localStorage.setItem(collection, JSON.stringify(existing.slice(0, 30)));
-        } catch(e){}
-      },
-
-      showHistoryModal() {
-        const modal = document.getElementById('historyModal');
-        const list = document.getElementById('historyList');
-        modal.classList.remove('hidden');
-        list.innerHTML = `<div class="text-center text-slate-500 py-6">Caricamento record in corso...</div>`;
-
-        if (fbDb) {
-          const trainRef = ref(fbDb, 'training_sessions');
-          onValue(trainRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-              list.innerHTML = `<div class="text-center text-slate-500 py-6">Nessun allenamento salvato finora.</div>`;
-              return;
-            }
-            const items = Object.values(data).sort((a,b) => b.timestamp - a.timestamp).slice(0, 15);
-            let html = '<div class="space-y-2">';
-            items.forEach(it => {
-              html += `
-                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                  <div>
-                    <div class="font-bold text-white">${it.playerName} <span class="text-[10px] text-amber-400 font-normal">(${it.mode})</span></div>
-                    <div class="text-[10px] text-slate-400">${it.dateString || 'Data non disponibile'}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-emerald-400 font-bold">Avg: ${it.avg3 || '-'}</div>
-                    <div class="text-[10px] text-slate-400">Dardi: ${it.dartsCount}</div>
-                  </div>
-                </div>
-              `;
-            });
-            html += '</div>';
-            list.innerHTML = html;
-          }, { onlyOnce: true });
-        } else {
-          const local = JSON.parse(localStorage.getItem('training_sessions') || '[]');
-          if (local.length === 0) {
-            list.innerHTML = `<div class="text-center text-slate-500 py-6">Nessun record locale trovato.</div>`;
-          } else {
-            let html = '<div class="space-y-2">';
-            local.slice(0, 15).forEach(it => {
-              html += `
-                <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                  <div>
-                    <div class="font-bold text-white">${it.playerName} <span class="text-[10px] text-amber-400 font-normal">(${it.mode})</span></div>
-                    <div class="text-[10px] text-slate-400">${it.dateString}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-emerald-400 font-bold">Avg: ${it.avg3}</div>
-                    <div class="text-[10px] text-slate-400">Dardi: ${it.dartsCount}</div>
-                  </div>
-                </div>
-              `;
-            });
-            html += '</div>';
-            list.innerHTML = html;
-          }
-        }
-      },
-
-      closeHistoryModal() {
-        document.getElementById('historyModal').classList.add('hidden');
+        lucide.createIcons();
       }
-    };
 
-    window.addEventListener('DOMContentLoaded', () => {
-      window.app.init();
-    });
+      clearHistory() {
+        try {
+          localStorage.removeItem('darts_history');
+        } catch (e) {}
+        this.loadAndRender();
+      }
+    }
+    const statsCtrl = new StatisticsController();
+
+    window.onload = function() {
+      app.init();
+    };
   </script>
 </body>
 </html>
