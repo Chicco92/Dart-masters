@@ -15,27 +15,22 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
-    @keyframes celebrateZoom {
-      0% { transform: scale(0.2); opacity: 0; filter: drop-shadow(0 0 0px rgba(234,179,8,0)); }
-      30% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 35px rgba(234,179,8,0.9)); }
-      50% { transform: scale(0.95); opacity: 1; filter: drop-shadow(0 0 25px rgba(234,179,8,0.7)); }
-      70% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 30px rgba(234,179,8,0.8)); }
-      90% { transform: scale(1); opacity: 1; }
+    @keyframes zoomBounce {
+      0% { transform: scale(0.2); opacity: 0; }
+      25% { transform: scale(1.15); opacity: 1; }
+      45% { transform: scale(0.95); opacity: 1; }
+      65% { transform: scale(1.05); opacity: 1; }
+      85% { transform: scale(1); opacity: 1; }
       100% { transform: scale(1.05); opacity: 0; }
     }
     .celebrate-anim {
-      animation: celebrateZoom 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: zoomBounce 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-    .glass {
+    .glass-panel {
       background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .glass-active {
-      background: rgba(30, 41, 59, 0.85);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-    }
-    /* Disable double tap zoom on mobile buttons */
     button {
       touch-action: manipulation;
       user-select: none;
@@ -45,15 +40,15 @@
 </head>
 <body class="h-full flex flex-col antialiased selection:bg-amber-500 selection:text-black">
 
-  <!-- ================= OVERLAY CELEBRAZIONE 180 / 170 ================= -->
-  <div id="celebrationOverlay" class="fixed inset-0 pointer-events-none z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+  <!-- OVERLAY CELEBRAZIONE 180 / 170 (Solo Numero Gigante + Fuochi) -->
+  <div id="celebrationOverlay" class="fixed inset-0 pointer-events-none z-[9999] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <canvas id="fireworksCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-    <div id="celebrationNumber" class="relative z-10 text-8xl sm:text-9xl md:text-[14rem] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 drop-shadow-[0_10px_35px_rgba(245,158,11,0.8)] select-none">
-      <!-- 180 o 170 generato via JS -->
+    <div id="celebrationNumber" class="relative z-10 text-8xl sm:text-9xl md:text-[14rem] font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-amber-400 to-amber-600 drop-shadow-[0_10px_40px_rgba(245,158,11,0.85)] select-none">
+      <!-- 180 o 170 -->
     </div>
   </div>
 
-  <!-- HEADER -->
+  <!-- HEADER ORIGINALE -->
   <header class="w-full bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
     <div class="flex items-center gap-3 cursor-pointer" onclick="app.showHome()">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -63,24 +58,23 @@
         <h1 class="text-lg font-black tracking-wider uppercase text-white flex items-center gap-1.5 leading-none">
           Darts Master <span class="text-amber-400 text-xs px-1.5 py-0.5 rounded bg-amber-400/10 font-bold border border-amber-400/20">PRO</span>
         </h1>
-        <p class="text-[10px] text-slate-400 font-medium">Training & Arena Multiplayer</p>
+        <p class="text-[10px] text-slate-400 font-medium">Training & Multiplayer Arena</p>
       </div>
     </div>
 
-    <!-- Status & Home button -->
     <div class="flex items-center gap-2">
       <div id="firebaseBadge" class="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Firebase RTDB</span>
+        <span>Firebase Realtime</span>
       </div>
-      <button onclick="app.showHome()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700 flex items-center gap-1 text-xs">
+      <button onclick="app.showHome()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1">
         <i data-lucide="home" class="w-4 h-4"></i>
         <span class="hidden xs:inline">Menu</span>
       </button>
     </div>
   </header>
 
-  <!-- MAIN CONTENT CONTAINER -->
+  <!-- CONTENITORE PRINCIPALE -->
   <main class="flex-1 overflow-y-auto p-3 sm:p-4 max-w-4xl w-full mx-auto flex flex-col justify-start">
     
     <!-- 1. HOME SCREEN -->
@@ -95,8 +89,8 @@
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <!-- Scheda Allenamento -->
-        <div class="glass p-6 rounded-2xl hover:border-amber-500/50 transition-all duration-300 flex flex-col justify-between group hover:shadow-xl hover:shadow-amber-500/10">
+        <!-- Allenamento -->
+        <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between group hover:border-amber-500/50 transition-all">
           <div class="space-y-3">
             <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
               <i data-lucide="crosshair" class="w-6 h-6"></i>
@@ -112,8 +106,8 @@
           </button>
         </div>
 
-        <!-- Scheda Partita -->
-        <div class="glass p-6 rounded-2xl hover:border-emerald-500/50 transition-all duration-300 flex flex-col justify-between group hover:shadow-xl hover:shadow-emerald-500/10">
+        <!-- Partita -->
+        <div class="glass-panel p-6 rounded-2xl flex flex-col justify-between group hover:border-emerald-500/50 transition-all">
           <div class="space-y-3">
             <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
               <i data-lucide="swords" class="w-6 h-6"></i>
@@ -130,7 +124,6 @@
         </div>
       </div>
 
-      <!-- Quick Session Stats Button -->
       <div class="pt-4 flex justify-center">
         <button onclick="app.showHistoryModal()" class="text-xs text-slate-400 hover:text-white flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 border border-slate-800 transition-colors">
           <i data-lucide="history" class="w-4 h-4 text-amber-400"></i>
@@ -151,7 +144,7 @@
         </div>
       </div>
 
-      <div class="glass p-5 rounded-2xl space-y-5">
+      <div class="glass-panel p-5 rounded-2xl space-y-5">
         <div>
           <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Modalità di Allenamento</label>
           <div class="grid grid-cols-2 gap-2">
@@ -172,7 +165,6 @@
           </div>
         </div>
 
-        <!-- Opzioni Target Casuali -->
         <div id="targetOptionsBox" class="space-y-3">
           <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block">Moltiplicatori Inclusi</label>
           <div class="grid grid-cols-3 gap-2">
@@ -191,7 +183,6 @@
           </div>
         </div>
 
-        <!-- Registrazione Firebase/DB -->
         <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
           <div>
             <div class="text-sm font-semibold text-white">Salva Sessione nel Database</div>
@@ -203,7 +194,6 @@
           </label>
         </div>
 
-        <!-- Nome Giocatore Allenamento -->
         <div>
           <label class="text-xs font-semibold text-slate-400 block mb-1">Tuo Nome o Nickname</label>
           <input type="text" id="trPlayerName" value="Dart Master" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
@@ -228,8 +218,7 @@
         </div>
       </div>
 
-      <div class="glass p-5 rounded-2xl space-y-4">
-        <!-- Modalità di Partita -->
+      <div class="glass-panel p-5 rounded-2xl space-y-4">
         <div>
           <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-2">Modalità di Gioco</label>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -248,7 +237,6 @@
           </div>
         </div>
 
-        <!-- Opzioni X01 (Mostrate solo se X01) -->
         <div id="x01OptionsBox" class="space-y-4 pt-2 border-t border-slate-800">
           <div>
             <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Punteggio di Partenza</label>
@@ -273,7 +261,6 @@
           </div>
         </div>
 
-        <!-- Formato Squadre (1v1, 2v2, 3v3) -->
         <div class="pt-2 border-t border-slate-800">
           <label class="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Formato Competizione</label>
           <div class="grid grid-cols-3 gap-2">
@@ -289,11 +276,8 @@
           </div>
         </div>
 
-        <!-- Nomi Squadre e Giocatori -->
         <div class="space-y-3 pt-2 border-t border-slate-800">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="playerInputsContainer">
-            <!-- Popolato dinamicamente da app.renderPlayerInputs() -->
-          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="playerInputsContainer"></div>
         </div>
 
         <button onclick="app.startMatch()" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 text-sm flex items-center justify-center gap-2 transition-all">
@@ -303,11 +287,11 @@
       </div>
     </section>
 
-    <!-- 4. ACTIVE GAMEPLAY SCREEN (Allenamento o Partita) -->
+    <!-- 4. ACTIVE GAMEPLAY SCREEN (Layout originale compatto e focalizzato) -->
     <section id="screenGameplay" class="hidden flex-1 flex flex-col justify-between space-y-3">
       
-      <!-- Top Match / Training Info Bar -->
-      <div class="glass p-3 sm:p-4 rounded-2xl flex items-center justify-between">
+      <!-- Top Info Bar -->
+      <div class="glass-panel p-3 sm:p-4 rounded-2xl flex items-center justify-between">
         <div>
           <span id="gameModeBadge" class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
             Allenamento
@@ -315,7 +299,7 @@
           <div id="gameSubDetail" class="text-xs text-slate-400 mt-0.5">Tiro Libero</div>
         </div>
 
-        <!-- 3 Darts Slots for Current Turn -->
+        <!-- 3 Dardi del Turno -->
         <div class="flex items-center gap-1.5">
           <div class="text-[11px] font-semibold text-slate-400 mr-1 hidden xs:block">Dardi Turno:</div>
           <div id="dartSlot1" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-300 shadow-inner">-</div>
@@ -323,26 +307,21 @@
           <div id="dartSlot3" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-300 shadow-inner">-</div>
         </div>
 
-        <!-- Action / Stop button -->
         <button onclick="app.confirmEndSession()" class="text-xs p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
           <i data-lucide="stop-circle" class="w-4 h-4"></i>
           <span class="hidden sm:inline">Termina</span>
         </button>
       </div>
 
-      <!-- Live Scoreboards / Active Players Overview -->
-      <div id="scoreboardContainer" class="w-full">
-        <!-- Renderizzato via JS in base alla modalità -->
-      </div>
+      <!-- Scoreboard Dinamica -->
+      <div id="scoreboardContainer" class="w-full"></div>
 
-      <!-- Live Dynamic Banner (Checkouts or Target to Hit) -->
-      <div id="liveTargetBanner" class="w-full glass p-3 rounded-2xl text-center flex flex-col items-center justify-center">
-        <!-- Contenuto dinamico -->
-      </div>
+      <!-- Banner Obiettivo / Checkouts Dinamico -->
+      <div id="liveTargetBanner" class="w-full glass-panel p-3 rounded-2xl text-center flex flex-col items-center justify-center"></div>
 
-      <!-- KEYPAD COMPATTO A SINGOLO CLIC (Zero Conferme) -->
-      <div class="glass p-3 rounded-2xl space-y-2 mt-auto">
-        <!-- Moltiplicatori Toggle S / D / T -->
+      <!-- KEYPAD COMPATTO A CLIC DIRETTO -->
+      <div class="glass-panel p-3 rounded-2xl space-y-2 mt-auto">
+        <!-- Moltiplicatori -->
         <div class="grid grid-cols-3 gap-1.5">
           <button id="multS" onclick="app.setMultiplier(1)" class="py-2 rounded-xl font-black text-xs uppercase transition-all bg-amber-500 text-slate-950 shadow-md">
             Singolo (1x)
@@ -355,38 +334,34 @@
           </button>
         </div>
 
-        <!-- Griglia Settori da 1 a 20 -->
+        <!-- Numeri da 1 a 20 -->
         <div class="grid grid-cols-5 gap-1.5 pt-1">
-          <!-- 1-5 -->
-          <button onclick="app.throwDart(1)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">1</button>
-          <button onclick="app.throwDart(2)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">2</button>
-          <button onclick="app.throwDart(3)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">3</button>
-          <button onclick="app.throwDart(4)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">4</button>
-          <button onclick="app.throwDart(5)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">5</button>
+          <button onclick="app.throwDart(1)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">1</button>
+          <button onclick="app.throwDart(2)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">2</button>
+          <button onclick="app.throwDart(3)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">3</button>
+          <button onclick="app.throwDart(4)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">4</button>
+          <button onclick="app.throwDart(5)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">5</button>
 
-          <!-- 6-10 -->
-          <button onclick="app.throwDart(6)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">6</button>
-          <button onclick="app.throwDart(7)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">7</button>
-          <button onclick="app.throwDart(8)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">8</button>
-          <button onclick="app.throwDart(9)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">9</button>
-          <button onclick="app.throwDart(10)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">10</button>
+          <button onclick="app.throwDart(6)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">6</button>
+          <button onclick="app.throwDart(7)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">7</button>
+          <button onclick="app.throwDart(8)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">8</button>
+          <button onclick="app.throwDart(9)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">9</button>
+          <button onclick="app.throwDart(10)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">10</button>
 
-          <!-- 11-15 -->
-          <button onclick="app.throwDart(11)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">11</button>
-          <button onclick="app.throwDart(12)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">12</button>
-          <button onclick="app.throwDart(13)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">13</button>
-          <button onclick="app.throwDart(14)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">14</button>
-          <button onclick="app.throwDart(15)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">15</button>
+          <button onclick="app.throwDart(11)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">11</button>
+          <button onclick="app.throwDart(12)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">12</button>
+          <button onclick="app.throwDart(13)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">13</button>
+          <button onclick="app.throwDart(14)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">14</button>
+          <button onclick="app.throwDart(15)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">15</button>
 
-          <!-- 16-20 -->
-          <button onclick="app.throwDart(16)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">16</button>
-          <button onclick="app.throwDart(17)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">17</button>
-          <button onclick="app.throwDart(18)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">18</button>
-          <button onclick="app.throwDart(19)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">19</button>
-          <button onclick="app.throwDart(20)" class="keypad-btn py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">20</button>
+          <button onclick="app.throwDart(16)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">16</button>
+          <button onclick="app.throwDart(17)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">17</button>
+          <button onclick="app.throwDart(18)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">18</button>
+          <button onclick="app.throwDart(19)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">19</button>
+          <button onclick="app.throwDart(20)" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-extrabold text-sm border border-slate-700">20</button>
         </div>
 
-        <!-- Tasti Speciali: Miss, Bull 25, Bullseye 50, UNDO -->
+        <!-- Speciali: Miss, Bull 25, Bullseye 50, UNDO -->
         <div class="grid grid-cols-4 gap-1.5 pt-1">
           <button onclick="app.throwDart(0)" class="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs border border-slate-800 active:scale-95">
             MISS (0)
@@ -405,9 +380,9 @@
       </div>
     </section>
 
-    <!-- 5. REPORT FINALE (Allenamento o Partita Vinta) -->
+    <!-- 5. REPORT FINALE -->
     <section id="screenReport" class="hidden space-y-5 my-auto py-6">
-      <div class="glass p-6 rounded-3xl text-center space-y-4">
+      <div class="glass-panel p-6 rounded-3xl text-center space-y-4">
         <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/20">
           <i data-lucide="trophy" class="w-8 h-8"></i>
         </div>
@@ -415,14 +390,9 @@
         <h2 id="reportTitle" class="text-3xl font-black text-white">Sessione Conclusa!</h2>
         <p id="reportSubtitle" class="text-sm text-slate-400">Ecco il resoconto completo delle tue freccette</p>
 
-        <!-- Griglia Statistiche -->
-        <div id="reportStatsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-          <!-- Renderizzato via JS -->
-        </div>
+        <div id="reportStatsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2"></div>
 
-        <div id="reportSaveStatus" class="text-xs text-emerald-400 py-1 font-semibold">
-          <!-- Stato salvataggio Firebase -->
-        </div>
+        <div id="reportSaveStatus" class="text-xs text-emerald-400 py-1 font-semibold"></div>
 
         <div class="flex flex-col sm:flex-row gap-2 pt-2">
           <button onclick="app.restartSameSession()" class="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20">
@@ -438,7 +408,7 @@
 
   <!-- MODALE STORICO DATABASE -->
   <div id="historyModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass max-w-lg w-full max-h-[85vh] rounded-2xl flex flex-col overflow-hidden border border-slate-800">
+    <div class="glass-panel max-w-lg w-full max-h-[85vh] rounded-2xl flex flex-col overflow-hidden border border-slate-800">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <i data-lucide="database" class="w-5 h-5 text-amber-400"></i>
@@ -454,9 +424,7 @@
     </div>
   </div>
 
-  <!-- SCRIPT LOGICO COMPLETO & FIREBASE SDK -->
   <script type="module">
-    // Inizializzazione Firebase Realtime Database
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
@@ -475,14 +443,13 @@
     try {
       fbApp = initializeApp(firebaseConfig);
       fbDb = getDatabase(fbApp);
-      console.log("Firebase Realtime Database collegato correttamente.");
       const badge = document.getElementById('firebaseBadge');
       if (badge) badge.classList.remove('hidden');
     } catch(e) {
-      console.warn("Firebase non inizializzato, fallback locale:", e);
+      console.warn("Fallback locale attivo:", e);
     }
 
-    // Motore Audio Sintetico Web Audio API (zero dipendenze audio esterne)
+    // Motore Audio Sintetico Web Audio API
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) {
@@ -493,7 +460,6 @@
       }
     }
 
-    // Suono colpo freccetta standard
     function playDartSound(multiplier = 1) {
       try {
         initAudio();
@@ -516,7 +482,6 @@
       } catch(e){}
     }
 
-    // Suono Bust
     function playBustSound() {
       try {
         initAudio();
@@ -538,11 +503,10 @@
       } catch(e){}
     }
 
-    // FANFARA CELEBRATIVA PER 180 / 170 (Sostituisce le voci parlate con squilli trionfali)
     function playCelebrationFanfare() {
       try {
         initAudio();
-        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; // Arpeggio C Major trionfale
+        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
         const now = audioCtx.currentTime;
         
         notes.forEach((freq, index) => {
@@ -615,7 +579,7 @@
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.04; // gravity
+        p.vy += 0.04;
         p.alpha -= p.decay;
 
         if (p.alpha <= 0) {
@@ -636,7 +600,6 @@
       requestAnimationFrame(renderFireworks);
     }
 
-    // Trigger Celebrazioni per 180 o 170
     function triggerCelebration(number) {
       const overlay = document.getElementById('celebrationOverlay');
       const numElem = document.getElementById('celebrationNumber');
@@ -645,13 +608,11 @@
       numElem.textContent = number;
       overlay.classList.remove('hidden');
       numElem.classList.remove('celebrate-anim');
-      void numElem.offsetWidth; // trigger reflow
+      void numElem.offsetWidth;
       numElem.classList.add('celebrate-anim');
 
-      // Suona la fanfara celebrativa polifonica
       playCelebrationFanfare();
 
-      // Coriandoli
       if (typeof confetti === 'function') {
         confetti({
           particleCount: 120,
@@ -660,7 +621,6 @@
         });
       }
 
-      // Avvia fuochi d'artificio
       fireworksActive = true;
       particles = [];
       resizeCanvas();
@@ -678,20 +638,15 @@
         }
       }, 350);
 
-      // Nascondi dopo l'animazione (~3.4 secondi)
       setTimeout(() => {
         overlay.classList.add('hidden');
         numElem.classList.remove('celebrate-anim');
       }, 3400);
     }
 
-    // ==========================================
-    // LOGICA DI GIOCO & STATO GLOBALE
-    // ==========================================
     const ORDER_AROUND_THE_WORLD = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20, 25];
     const ORDER_AROUND_THE_CLOCK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25];
 
-    // Tabelle Suggerimenti Checkout (Double Out)
     const CHECKOUTS = {
       170: "T20 • T20 • BULL",
       167: "T20 • T19 • BULL",
@@ -724,9 +679,9 @@
 
     window.app = {
       currentMultiplier: 1,
-      currentType: null, // 'training' | 'match'
+      currentType: null,
       trainingConfig: {
-        mode: 'target', // 'target' | 'free'
+        mode: 'target',
         save: true,
         playerName: 'Dart Master',
         incSingles: true,
@@ -734,23 +689,21 @@
         incTriples: true
       },
       matchConfig: {
-        mode: 'x01', // 'x01' | 'world' | 'clock'
+        mode: 'x01',
         x01Points: 501,
-        checkoutRule: 'double', // 'double' | 'straight'
-        teamFormat: 1, // 1, 2, 3
+        checkoutRule: 'double',
+        teamFormat: 1,
         teams: [
           { name: "Squadra 1", players: ["Giocatore 1"] },
           { name: "Squadra 2", players: ["Giocatore 2"] }
         ]
       },
-      // Session State
       gameState: null,
-      historyStack: [], // Per undo totale
+      historyStack: [],
 
       init() {
         lucide.createIcons();
         this.renderPlayerInputs();
-        // Listener to unlock Web Audio on first touch/click
         window.addEventListener('touchstart', initAudio, { once: true });
         window.addEventListener('click', initAudio, { once: true });
       },
@@ -765,7 +718,6 @@
         document.getElementById(activeBtn).className = "py-2 rounded-xl font-black text-xs uppercase transition-all bg-amber-500 text-slate-950 shadow-md";
       },
 
-      // Navigazione Schermi
       showHome() {
         this.hideAllScreens();
         document.getElementById('screenHome').classList.remove('hidden');
@@ -788,7 +740,6 @@
         });
       },
 
-      // Setup Config Training
       setTrainingMode(mode) {
         this.trainingConfig.mode = mode;
         const tBtn = document.getElementById('trModeTargetBtn');
@@ -805,7 +756,6 @@
         }
       },
 
-      // Setup Config Match
       setMatchMode(mode) {
         this.matchConfig.mode = mode;
         ['matchModeX01Btn', 'matchModeWorldBtn', 'matchModeClockBtn'].forEach(id => {
@@ -883,9 +833,6 @@
         container.innerHTML = html;
       },
 
-      // ==========================================
-      // AVVIO SESSIONI
-      // ==========================================
       startTraining() {
         this.currentType = 'training';
         this.historyStack = [];
@@ -901,8 +848,7 @@
           playerName: this.trainingConfig.playerName,
           dartsCount: 0,
           totalScore: 0,
-          currentTurnDarts: [], // max 3
-          // Modalità Target
+          currentTurnDarts: [],
           currentTarget: null,
           targetAttempts: 0,
           targetHits: 0,
@@ -948,10 +894,9 @@
               name: teams[0].name,
               players: teams[0].players,
               scoreRemaining: this.matchConfig.x01Points,
-              targetIndex: 0, // Per World / Clock
+              targetIndex: 0,
               dartsThrown: 0,
-              totalPointsScored: 0,
-              legsWon: 0
+              totalPointsScored: 0
             },
             {
               name: teams[1].name,
@@ -959,14 +904,13 @@
               scoreRemaining: this.matchConfig.x01Points,
               targetIndex: 0,
               dartsThrown: 0,
-              totalPointsScored: 0,
-              legsWon: 0
+              totalPointsScored: 0
             }
           ],
           activeTeamIndex: 0,
-          activePlayerIndices: [0, 0], // Player turn inside team
-          currentTurnDarts: [], // frecce tirate nel turno corrente (max 3)
-          turnStartScoreRemaining: this.matchConfig.x01Points, // per gestire il Bust
+          activePlayerIndices: [0, 0],
+          currentTurnDarts: [],
+          turnStartScoreRemaining: this.matchConfig.x01Points,
           winner: null,
           startTime: Date.now()
         };
@@ -985,15 +929,11 @@
         if (allowedMults.length === 0) allowedMults.push(1);
 
         const mult = allowedMults[Math.floor(Math.random() * allowedMults.length)];
-        let sector = Math.floor(Math.random() * 20) + 1; // 1-20
+        let sector = Math.floor(Math.random() * 20) + 1;
 
-        // Possibilità di bull se singoli o doppi sono attivi
         if (Math.random() < 0.08) {
-          if (mult === 2) {
-            sector = 50; // Bullseye
-          } else {
-            sector = 25; // Outer Bull
-          }
+          if (mult === 2) sector = 50;
+          else sector = 25;
         }
 
         let label = '';
@@ -1012,7 +952,6 @@
         };
       },
 
-      // Salva snapshot prima di ogni modifica per UNDO affidabile
       pushUndoState() {
         this.historyStack.push(JSON.parse(JSON.stringify(this.gameState)));
         if (this.historyStack.length > 50) this.historyStack.shift();
@@ -1025,9 +964,6 @@
         this.updateGameplayUI();
       },
 
-      // ==========================================
-      // REGISTRAZIONE ISTANTANEA FRECCETTA
-      // ==========================================
       throwDart(sector, forcedMult = null) {
         initAudio();
         this.pushUndoState();
@@ -1037,7 +973,6 @@
 
         playDartSound(mult);
 
-        // Turno Freccia Registrata
         const dartInfo = {
           sector: sector,
           multiplier: mult,
@@ -1051,18 +986,15 @@
           this.handleMatchDart(dartInfo);
         }
 
-        // Resetta moltiplicatore a Singolo (1) per comodità
         this.setMultiplier(1);
       },
 
-      // Allenamento
       handleTrainingDart(dart) {
         const gs = this.gameState;
         gs.dartsCount++;
         gs.totalScore += dart.points;
         gs.currentTurnDarts.push(dart);
 
-        // Controllo Bersagli Casuali
         if (gs.mode === 'target' && gs.currentTarget) {
           gs.targetAttempts++;
           const target = gs.currentTarget;
@@ -1078,16 +1010,15 @@
           }
         }
 
-        // Fine turno a 3 dardi
         if (gs.currentTurnDarts.length === 3) {
-          this.checkTurnCelebration(gs.currentTurnDarts);
+          const snapshotDarts = [...gs.currentTurnDarts];
+          this.checkTurnCelebration(snapshotDarts);
           gs.currentTurnDarts = [];
         }
 
         this.updateGameplayUI();
       },
 
-      // Partita
       handleMatchDart(dart) {
         const gs = this.gameState;
         const currentTeam = gs.teams[gs.activeTeamIndex];
@@ -1098,13 +1029,11 @@
         let turnShouldAdvance = false;
         let isBust = false;
 
-        // Modalità Classica X01
         if (gs.mode === 'x01') {
           const remaining = currentTeam.scoreRemaining - dart.points;
           const needDouble = gs.checkoutRule === 'double';
 
           if (remaining < 0 || (needDouble && remaining === 1)) {
-            // BUST!
             isBust = true;
             playBustSound();
             currentTeam.scoreRemaining = gs.turnStartScoreRemaining;
@@ -1117,49 +1046,34 @@
                 this.handleVictory(currentTeam);
                 return;
               } else {
-                // Non ha chiuso col doppio => BUST
                 isBust = true;
                 playBustSound();
                 currentTeam.scoreRemaining = gs.turnStartScoreRemaining;
                 turnShouldAdvance = true;
               }
             } else {
-              // Chiusura diretta valida
               currentTeam.scoreRemaining = 0;
               this.handleVictory(currentTeam);
               return;
             }
           } else {
-            // Punteggio valido rimanente > 0
             currentTeam.scoreRemaining = remaining;
           }
-        }
-
-        // Modalità Around The World & Around The Clock
-        else {
+        } else {
           const sequence = (gs.mode === 'world') ? ORDER_AROUND_THE_WORLD : ORDER_AROUND_THE_CLOCK;
           const currentTargetVal = sequence[currentTeam.targetIndex];
 
-          let hitCurrent = false;
-
-          // Se il bersaglio attuale è l'ULTIMO (25 / Bullseye)
           if (currentTargetVal === 25) {
             if (dart.sector === 25 || dart.sector === 50) {
-              hitCurrent = true;
-              // REGOLA MANDATORIA: Si vince solo ed unicamente colpendo il 25 o il Bullseye
               this.handleVictory(currentTeam);
               return;
             }
           } else {
-            // Settori normali (1-20)
             if (dart.sector === currentTargetVal) {
-              hitCurrent = true;
-              // Regola moltiplicatori: S = +1, D = +2, T = +3
               const step = Math.min(dart.multiplier, 3);
               const nextIndex = currentTeam.targetIndex + step;
-              const maxBullIndex = sequence.length - 1; // Indice del 25
+              const maxBullIndex = sequence.length - 1;
 
-              // REGOLA MANDATORIA: Nessun salto oltre il 25/Bull. Al massimo si arriva al 25.
               if (nextIndex >= maxBullIndex) {
                 currentTeam.targetIndex = maxBullIndex;
               } else {
@@ -1169,21 +1083,14 @@
           }
         }
 
-        // Controllo se il turno da 3 frecce è terminato o se c'è stato Bust
         if (gs.currentTurnDarts.length === 3 || turnShouldAdvance) {
-          // Memorizza il terzetto prima di azzerarlo per garantire il trigger
           const lastTurnDarts = [...gs.currentTurnDarts];
           if (!isBust && lastTurnDarts.length === 3) {
             this.checkTurnCelebration(lastTurnDarts);
           }
 
-          // Passaggio turno
           gs.currentTurnDarts = [];
-          
-          // Ruota giocatore della squadra corrente
           gs.activePlayerIndices[gs.activeTeamIndex] = (gs.activePlayerIndices[gs.activeTeamIndex] + 1) % currentTeam.players.length;
-
-          // Cambia squadra
           gs.activeTeamIndex = (gs.activeTeamIndex === 0) ? 1 : 0;
           gs.turnStartScoreRemaining = gs.teams[gs.activeTeamIndex].scoreRemaining;
         }
@@ -1191,18 +1098,15 @@
         this.updateGameplayUI();
       },
 
-      // CONTROLLO 180 (T20 x3) e 170 (T20 x2 + Bullseye)
       checkTurnCelebration(darts) {
         if (!darts || darts.length !== 3) return;
 
-        // 180: Tre tripli 20
         const is180 = darts.every(d => d.sector === 20 && d.multiplier === 3);
         if (is180) {
           triggerCelebration(180);
           return;
         }
 
-        // 170: Due tripli 20 e un Bullseye (50) in qualsiasi ordine del turno
         const t20Count = darts.filter(d => d.sector === 20 && d.multiplier === 3).length;
         const dBullCount = darts.filter(d => d.sector === 50).length;
         if (t20Count === 2 && dBullCount === 1) {
@@ -1211,7 +1115,6 @@
         }
       },
 
-      // Vittoria Partita
       handleVictory(winningTeam) {
         if (typeof confetti === 'function') {
           confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
@@ -1223,14 +1126,10 @@
         this.showVictoryReport(winningTeam);
       },
 
-      // ==========================================
-      // AGGIORNAMENTO UI LIVE
-      // ==========================================
       updateGameplayUI() {
         const gs = this.gameState;
         if (!gs) return;
 
-        // Slot Dardi
         for (let i = 1; i <= 3; i++) {
           const slot = document.getElementById(`dartSlot${i}`);
           const dart = gs.currentTurnDarts[i - 1];
@@ -1259,15 +1158,15 @@
             const hitPct = gs.targetAttempts > 0 ? Math.round((gs.targetHits / gs.targetAttempts) * 100) : 0;
             scoreboard.innerHTML = `
               <div class="grid grid-cols-3 gap-2">
-                <div class="glass p-3 rounded-xl text-center">
+                <div class="glass-panel p-3 rounded-xl text-center">
                   <div class="text-[10px] text-slate-400 font-bold uppercase">Centrati</div>
                   <div class="text-xl sm:text-2xl font-black text-amber-400">${gs.targetHits} <span class="text-xs font-normal text-slate-400">/ ${gs.targetAttempts}</span></div>
                 </div>
-                <div class="glass p-3 rounded-xl text-center">
+                <div class="glass-panel p-3 rounded-xl text-center">
                   <div class="text-[10px] text-slate-400 font-bold uppercase">Precisione</div>
                   <div class="text-xl sm:text-2xl font-black text-white">${hitPct}%</div>
                 </div>
-                <div class="glass p-3 rounded-xl text-center">
+                <div class="glass-panel p-3 rounded-xl text-center">
                   <div class="text-[10px] text-slate-400 font-bold uppercase">Streak Attuale</div>
                   <div class="text-xl sm:text-2xl font-black text-emerald-400">${gs.currentStreak} <span class="text-xs text-slate-400 font-normal">(max ${gs.bestStreak})</span></div>
                 </div>
@@ -1279,18 +1178,17 @@
               <div class="text-3xl sm:text-4xl font-black text-amber-400 tracking-tight">${gs.currentTarget.label}</div>
             `;
           } else {
-            // Tiro Libero
             scoreboard.innerHTML = `
               <div class="grid grid-cols-3 gap-2">
-                <div class="glass p-3 rounded-xl text-center">
+                <div class="glass-panel p-3 rounded-xl text-center">
                   <div class="text-[10px] text-slate-400 font-bold uppercase">Punti Totali</div>
                   <div class="text-xl sm:text-2xl font-black text-white">${gs.totalScore}</div>
                 </div>
-                <div class="glass p-3 rounded-xl text-center">
+                <div class="glass-panel p-3 rounded-xl text-center">
                   <div class="text-[10px] text-slate-400 font-bold uppercase">Dardi Tirati</div>
                   <div class="text-xl sm:text-2xl font-black text-amber-400">${gs.dartsCount}</div>
                 </div>
-                <div class="glass p-3 rounded-xl text-center">
+                <div class="glass-panel p-3 rounded-xl text-center">
                   <div class="text-[10px] text-slate-400 font-bold uppercase">Media 3 Dardi</div>
                   <div class="text-xl sm:text-2xl font-black text-emerald-400">${avg3}</div>
                 </div>
@@ -1301,10 +1199,7 @@
               <div class="text-xs text-slate-400">Lancia liberamente al bersaglio per affinare tiro e ritmo</div>
             `;
           }
-        } 
-        
-        // MATCH PLAY UI
-        else {
+        } else {
           const modeTitle = gs.mode === 'x01' ? `Classica ${gs.x01Points}` : (gs.mode === 'world' ? 'Around the World' : 'Around the Clock');
           badge.textContent = modeTitle;
           badge.className = "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
@@ -1313,11 +1208,10 @@
           const activePlayer = activeTeam.players[gs.activePlayerIndices[gs.activeTeamIndex]];
           sub.textContent = `Turno: ${activeTeam.name} (${activePlayer})`;
 
-          // Scoreboard per le 2 squadre
           let sbHtml = '<div class="grid grid-cols-2 gap-3">';
           gs.teams.forEach((t, idx) => {
             const isActive = idx === gs.activeTeamIndex;
-            const borderClass = isActive ? 'border-emerald-500 ring-1 ring-emerald-500/50 glass-active' : 'border-slate-800 glass';
+            const borderClass = isActive ? 'border-emerald-500 ring-1 ring-emerald-500/50 bg-slate-900/90' : 'border-slate-800 glass-panel';
             const curP = t.players[gs.activePlayerIndices[idx]];
 
             let mainDisplay = '';
@@ -1349,7 +1243,6 @@
           sbHtml += '</div>';
           scoreboard.innerHTML = sbHtml;
 
-          // Target / Checkout Banner
           if (gs.mode === 'x01') {
             const rem = activeTeam.scoreRemaining;
             const checkout = CHECKOUTS[rem];
@@ -1385,9 +1278,6 @@
         }
       },
 
-      // ==========================================
-      // REPORT FINALE E SALVATAGGI
-      // ==========================================
       confirmEndSession() {
         if (confirm("Vuoi davvero terminare la sessione in corso?")) {
           this.endSession();
@@ -1499,7 +1389,6 @@
         }
       },
 
-      // Salvataggio su Firebase Realtime Database
       saveTrainingResult() {
         const gs = this.gameState;
         const statusElem = document.getElementById('reportSaveStatus');
@@ -1524,7 +1413,7 @@
           set(newSessionRef, record).then(() => {
             statusElem.textContent = "✓ Sessione salvata con successo nel database Firebase!";
           }).catch(err => {
-            console.error("Errore salvataggio Firebase:", err);
+            console.error("Errore Firebase:", err);
             statusElem.textContent = "Salvato localmente (offline)";
             this.saveLocal('training_sessions', record);
           });
@@ -1570,7 +1459,6 @@
         } catch(e){}
       },
 
-      // Modale Storico Record
       showHistoryModal() {
         const modal = document.getElementById('historyModal');
         const list = document.getElementById('historyList');
@@ -1635,7 +1523,6 @@
       }
     };
 
-    // Avvio all'evento DOMContentLoaded
     window.addEventListener('DOMContentLoaded', () => {
       window.app.init();
     });
