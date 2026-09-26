@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Darts Master & Scorer - Realtime DB</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Canvas Confetti for Victory Screen -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            arena: {
+              950: '#070a12',
+              900: '#0d1527',
+              800: '#1b253b',
+              700: '#2d3b55'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 5%, #142247 0%, #060911 100%);
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      user-select: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .tap-press:active {
+      transform: scale(0.95);
+    }
+    .glow-gold {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    }
+    .pulse-target {
+      animation: targetPulse 1.5s infinite;
+    }
+    @keyframes targetPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+  </style>
+</head>
+<body class="antialiased flex flex-col justify-between min-h-screen">
+
+  <!-- TOP HEADER -->
+  <header class="border-b border-gray-800/80 bg-gray-950/80 backdrop-blur-md sticky top-0 z-50 px-4 py-2.5">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="app.navigate('home')">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-amber-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="target" class="w-5 h-5 text-gray-950 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-amber-300 to-red-400">DARTS MASTER</h1>
+          <p class="text-[10px] text-gray-400 font-medium tracking-tight">Scorer Istantaneo & Realtime Cloud</p>
+        </div>
+      </div>
+
+      <!-- Realtime DB status and actions -->
+      <div class="flex items-center gap-2">
+        <div id="fbBadge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-semibold text-emerald-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Firebase Realtime
+        </div>
+        <button id="soundToggleBtn" onclick="sound.toggle()" class="p-2 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-gray-300 transition-colors" title="Audio On/Off">
+          <i id="soundIcon" data-lucide="volume-2" class="w-4 h-4 text-emerald-400"></i>
+        </button>
+        <button onclick="app.navigate('stats')" class="p-2 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-gray-300 transition-colors" title="Statistiche & Storico">
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-blue-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="max-w-4xl mx-auto w-full p-3 sm:p-4 flex-1 flex flex-col">
+
+    <!-- SCREEN 1: HOME -->
+    <section id="screen-home" class="flex-1 flex flex-col justify-center items-center py-6">
+      <div class="text-center max-w-lg mb-8">
+        <span class="px-3 py-1 text-[11px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full inline-block mb-3">Tiri Immediati &bull; Realtime DB</span>
+        <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight mb-2">Pronto a Lanciare?</h2>
+        <p class="text-gray-400 text-xs sm:text-sm">Allenati con bersagli casuali e statistiche o sfida i tuoi amici. Ogni tocco registra la freccia istantaneamente.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-2xl">
+        <!-- Training Card -->
+        <div onclick="app.startTrainingConfig()" class="group relative bg-gradient-to-b from-gray-900/90 to-gray-950 border border-emerald-500/30 hover:border-emerald-400 p-6 rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] shadow-xl hover:shadow-emerald-500/20 flex flex-col justify-between">
+          <div class="absolute top-4 right-4 bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold">SOLO</div>
+          <div class="mb-5">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-3 group-hover:bg-emerald-500 group-hover:text-gray-950 transition-colors">
+              <i data-lucide="crosshair" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1.5">Allenamento</h3>
+            <p class="text-gray-400 text-xs leading-relaxed">
+              Generatore di bersagli casuali (Singoli, Doppi, Tripli, Bull) o Tiro Libero. Puoi salvare la sessione su Firebase per analizzare i progressi.
+            </p>
+          </div>
+          <div class="flex items-center text-emerald-400 font-bold text-xs group-hover:translate-x-1.5 transition-transform">
+            Configura sessione <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+          </div>
+        </div>
+
+        <!-- Match Card -->
+        <div onclick="app.startMatchConfig()" class="group relative bg-gradient-to-b from-gray-900/90 to-gray-950 border border-amber-500/30 hover:border-amber-400 p-6 rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] shadow-xl hover:shadow-amber-500/20 flex flex-col justify-between">
+          <div class="absolute top-4 right-4 bg-amber-500/20 text-amber-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold">AMICI</div>
+          <div class="mb-5">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-3 group-hover:bg-amber-500 group-hover:text-gray-950 transition-colors">
+              <i data-lucide="swords" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1.5">Partita</h3>
+            <p class="text-gray-400 text-xs leading-relaxed">
+              <b>Classica (X01)</b> (Straight o Double Out, 1v1, 2v2, 3v3); <b>Around the World</b> in senso orario; <b>Around the Clock</b> da 1 a 20. Chiusura mandatoria al <b>25/Bullseye</b> per vincere!
+            </p>
+          </div>
+          <div class="flex items-center text-amber-400 font-bold text-xs group-hover:translate-x-1.5 transition-transform">
+            Inizia partita <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: TRAINING CONFIG -->
+    <section id="screen-training-config" class="hidden flex-1 flex flex-col items-center justify-center py-4">
+      <div class="bg-gray-900/95 border border-gray-800 p-6 rounded-3xl w-full max-w-md shadow-2xl backdrop-blur-sm">
+        <div class="flex items-center justify-between mb-5">
+          <button onclick="app.navigate('home')" class="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i> Indietro
+          </button>
+          <h2 class="text-lg font-bold text-white">Allenamento</h2>
+          <div class="w-8"></div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Esercizio</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" id="trainModeRandom" onclick="trainCtrl.setSubMode('random')" class="p-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs text-center flex flex-col items-center gap-1">
+                <i data-lucide="target" class="w-4 h-4"></i>
+                Obiettivo Random
+              </button>
+              <button type="button" id="trainModeFree" onclick="trainCtrl.setSubMode('free')" class="p-3 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-semibold text-xs text-center flex flex-col items-center gap-1">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+                Tiro Libero
+              </button>
+            </div>
+            <p id="trainSubmodeDesc" class="text-[11px] text-gray-400 mt-2">Un bersaglio casuale da centrare. Se lo colpisci, passa immediatamente a quello successivo!</p>
+          </div>
+
+          <div id="trainTargetSettings" class="space-y-1.5">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400">Filtro Difficoltà</label>
+            <select id="trainDifficulty" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500">
+              <option value="all">Misto (Singoli, Doppi, Tripli & Bull)</option>
+              <option value="doubles">Solo Doppi (Allenamento Checkout)</option>
+              <option value="triples">Solo Tripli (Power Scoring)</option>
+              <option value="singles">Solo Singoli (Precisione Base)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center justify-between p-3.5 bg-gray-800/50 rounded-2xl border border-gray-700/60">
+            <div>
+              <span class="text-xs font-bold text-white block">Salva nel Database Cloud</span>
+              <span class="text-[11px] text-gray-400">Archivia statistiche su Firebase Realtime</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="trainSaveDb" class="sr-only peer" checked>
+              <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Nome Giocatore</label>
+            <input type="text" id="trainPlayerName" value="Tiratore 1" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <button onclick="trainCtrl.startSession()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-gray-950 font-black text-sm shadow-lg shadow-emerald-500/25 transition-all tap-press">
+            INIZIA SESSIONE
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: MATCH CONFIG -->
+    <section id="screen-match-config" class="hidden flex-1 flex flex-col items-center justify-center py-4">
+      <div class="bg-gray-900/95 border border-gray-800 p-6 rounded-3xl w-full max-w-lg shadow-2xl backdrop-blur-sm">
+        <div class="flex items-center justify-between mb-5">
+          <button onclick="app.navigate('home')" class="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i> Indietro
+          </button>
+          <h2 class="text-lg font-bold text-white">Configura Partita</h2>
+          <div class="w-8"></div>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Game Type Selector -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Modalità</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="btnModeClassic" onclick="matchCtrl.setType('classic')" class="p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs text-center">
+                Classica (X01)
+              </button>
+              <button type="button" id="btnModeWorld" onclick="matchCtrl.setType('world')" class="p-2.5 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs text-center">
+                Around World
+              </button>
+              <button type="button" id="btnModeClock" onclick="matchCtrl.setType('clock')" class="p-2.5 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs text-center">
+                Around Clock
+              </button>
+            </div>
+            <p id="gameTypeHelp" class="text-[11px] text-gray-400 mt-1.5">Scala i punti fino a 0. Supporta Straight Out o Double Out.</p>
+          </div>
+
+          <!-- Format Team selection (1v1, 2v2, 3v3) -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Formato Partita</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" id="btnFormat1v1" onclick="matchCtrl.setFormat(1)" class="py-2 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs">1 vs 1</button>
+              <button type="button" id="btnFormat2v2" onclick="matchCtrl.setFormat(2)" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">2 vs 2</button>
+              <button type="button" id="btnFormat3v3" onclick="matchCtrl.setFormat(3)" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">3 vs 3</button>
+            </div>
+          </div>
+
+          <!-- Classic Options -->
+          <div id="classicOptions" class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Punti Iniziali</label>
+                <select id="classicStartingScore" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-amber-500">
+                  <option value="501" selected>501 Punti</option>
+                  <option value="401">401 Punti</option>
+                  <option value="301">301 Punti</option>
+                  <option value="201">201 Punti</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Chiusura</label>
+                <select id="classicOutRule" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2.5 text-xs focus:outline-none focus:border-amber-500">
+                  <option value="straight">Diretta (Straight Out)</option>
+                  <option value="double" selected>Doppio (Double Out)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Players Names -->
+          <div class="space-y-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400">Giocatori</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra A</span>
+                <input type="text" id="teamA_p1" placeholder="Giocatore A1" value="Tiratore A" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs">
+                <input type="text" id="teamA_p2" placeholder="Giocatore A2" value="Compagno A2" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+                <input type="text" id="teamA_p3" placeholder="Giocatore A3" value="Compagno A3" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+              </div>
+              <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-red-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra B</span>
+                <input type="text" id="teamB_p1" placeholder="Giocatore B1" value="Tiratore B" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs">
+                <input type="text" id="teamB_p2" placeholder="Giocatore B2" value="Compagno B2" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+                <input type="text" id="teamB_p3" placeholder="Giocatore B3" value="Compagno B3" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
+              </div>
+            </div>
+          </div>
+
+          <button onclick="matchCtrl.startMatch()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-400 hover:to-red-400 text-gray-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-all tap-press">
+            INIZIA PARTITA
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: PLAY ARENA (FAST NUMPAD, ZERO BOARD, INSTANT THROW) -->
+    <section id="screen-play" class="hidden flex-1 flex flex-col gap-3">
+      <!-- Top Scoreboard Bar -->
+      <div id="playHeader" class="bg-gray-900/90 border border-gray-800/90 rounded-2xl p-3 sm:p-4 shadow-lg backdrop-blur-sm">
+        <!-- Rendered by controller -->
+      </div>
+
+      <!-- Live Dynamic Target / Current Checkout Card -->
+      <div id="liveTargetCard" class="bg-gray-900/80 border border-gray-800 rounded-2xl p-3 sm:p-4 shadow-lg flex flex-col items-center justify-center text-center">
+        <!-- Injected dynamically with instant feedback -->
+      </div>
+
+      <!-- 3 Dart Slots & Undo Action -->
+      <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2" id="currentDartsDisplay">
+          <!-- 3 slots -->
+        </div>
+
+        <button onclick="playCtrl.undoLastDart()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-amber-300 font-bold text-xs sm:text-sm rounded-xl border border-gray-700 flex items-center gap-2 transition-all tap-press shadow">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Annulla (Undo)
+        </button>
+      </div>
+
+      <!-- KEYPAD SECTION -->
+      <div class="bg-gray-900/90 border border-gray-800/90 rounded-3xl p-3 sm:p-4 shadow-xl flex flex-col gap-2.5">
+        <!-- Multiplier Selector -->
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Moltiplicatore:
+          </span>
+          <div class="flex gap-1.5 bg-gray-950 p-1 rounded-xl border border-gray-800">
+            <button type="button" id="mulBtnS" onclick="keypad.setMultiplier(1)" class="px-3.5 py-1.5 text-xs font-black rounded-lg bg-emerald-500 text-gray-950 transition-all">S (1x)</button>
+            <button type="button" id="mulBtnD" onclick="keypad.setMultiplier(2)" class="px-3.5 py-1.5 text-xs font-black rounded-lg bg-transparent text-gray-300 hover:text-white transition-all">D (2x)</button>
+            <button type="button" id="mulBtnT" onclick="keypad.setMultiplier(3)" class="px-3.5 py-1.5 text-xs font-black rounded-lg bg-transparent text-gray-300 hover:text-white transition-all">T (3x)</button>
+          </div>
+        </div>
+
+        <!-- 1 to 20 Number Grid -->
+        <div id="keypadNumberGrid" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+          <!-- Populated 1..20 -->
+        </div>
+
+        <!-- Miss, Bull 25, Bullseye 50 -->
+        <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-800/80">
+          <button onclick="keypad.hitMiss()" class="py-3 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-red-400 font-black text-xs uppercase flex items-center justify-center gap-1.5 border border-red-500/20 tap-press">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> MISS (0)
+          </button>
+          <button onclick="keypad.hitBull(25)" class="py-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 font-black text-xs uppercase tap-press">
+            BULL (25)
+          </button>
+          <button onclick="keypad.hitBull(50)" class="py-3 rounded-xl bg-red-950/70 hover:bg-red-900 border border-red-600/50 text-red-300 font-black text-xs uppercase tap-press">
+            BULLSEYE (50)
+          </button>
+        </div>
+      </div>
+
+      <!-- Turn History Log -->
+      <div class="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-3 flex flex-col max-h-36">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-blue-400"></i> Turni Recenti
+          </span>
+          <button onclick="playCtrl.abortMatch()" class="text-xs text-red-400 hover:text-red-300 font-semibold">Termina / Esci</button>
+        </div>
+        <div id="turnHistoryList" class="space-y-1 overflow-y-auto pr-1 text-xs text-gray-300 hide-scrollbar flex-1">
+          <p class="text-gray-500 italic py-1 text-center">Nessun tiro registrato.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: SUMMARY & VICTORY -->
+    <section id="screen-summary" class="hidden flex-1 flex flex-col items-center justify-center py-6">
+      <div class="bg-gray-900/95 border border-amber-500/40 p-6 rounded-3xl w-full max-w-md shadow-2xl text-center glow-gold backdrop-blur-md">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/30 mb-3 animate-bounce">
+          <i data-lucide="trophy" class="w-8 h-8 text-gray-950 stroke-[2.5]"></i>
+        </div>
+
+        <h2 id="summaryTitle" class="text-2xl font-black text-white mb-1">VITTORIA!</h2>
+        <p id="summarySubtitle" class="text-amber-400 font-semibold text-xs mb-5">Squadra A vince la sfida</p>
+
+        <div id="summaryStatsGrid" class="grid grid-cols-2 gap-2.5 text-left mb-5">
+          <!-- Injected dynamically -->
+        </div>
+
+        <div id="summaryBreakdown" class="bg-gray-950/70 rounded-2xl p-3 border border-gray-800 text-xs text-gray-300 mb-5 max-h-36 overflow-y-auto text-left">
+          <!-- Injected dynamically -->
+        </div>
+
+        <div class="flex gap-2.5">
+          <button onclick="app.navigate('home')" class="flex-1 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs transition-all tap-press">
+            Torna alla Home
+          </button>
+          <button onclick="playCtrl.rematch()" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs shadow-md shadow-emerald-500/25 transition-all tap-press">
+            Gioca di Nuovo
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 6: STATS & HISTORY -->
+    <section id="screen-stats" class="hidden flex-1 flex flex-col py-3">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-black text-white">Cronologia & Cloud DB</h2>
+          <p class="text-xs text-gray-400">Sessioni sincronizzate con Firebase Realtime Database</p>
+        </div>
+        <button onclick="app.navigate('home')" class="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold flex items-center gap-1">
+          <i data-lucide="home" class="w-3.5 h-3.5"></i> Home
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-3">
+        <button onclick="statsCtrl.filter('all')" id="tabStatsAll" class="px-3 py-1.5 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs">Tutto</button>
+        <button onclick="statsCtrl.filter('training')" id="tabStatsTrain" class="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 font-semibold text-xs">Allenamenti</button>
+        <button onclick="statsCtrl.filter('matches')" id="tabStatsMatch" class="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 font-semibold text-xs">Partite</button>
+        <button onclick="statsCtrl.clearHistory()" class="ml-auto text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Svuota Locale
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Sessioni Totali</span>
+          <span id="statTotSessions" class="text-xl font-black text-white">0</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Dardi Lanciati</span>
+          <span id="statTotDarts" class="text-xl font-black text-emerald-400">0</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Precisione Media</span>
+          <span id="statAccuracy" class="text-xl font-black text-blue-400">0%</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl">
+          <span class="text-[10px] text-gray-400 block mb-0.5">Sincronizzazione</span>
+          <span id="statSyncStatus" class="text-xs font-bold text-emerald-400 mt-2 block">Cloud Online</span>
+        </div>
+      </div>
+
+      <div id="statsHistoryList" class="space-y-2 flex-1 overflow-y-auto">
+        <!-- Injected dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-gray-900/80 py-2.5 text-center text-[11px] text-gray-500">
+    Darts Master & Scorer &bull; Realtime Database Connected
+  </footer>
+
+  <!-- AUDIO ENGINE -->
+  <script>
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      }
+      toggle() {
+        this.enabled = !this.enabled;
+        const icon = document.getElementById('soundIcon');
+        if (icon) {
+          icon.setAttribute('data-lucide', this.enabled ? 'volume-2' : 'volume-x');
+          icon.className = this.enabled ? 'w-4 h-4 text-emerald-400' : 'w-4 h-4 text-gray-500';
+          lucide.createIcons();
+        }
+      }
+      playDartThud(multiplier = 1) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          
+          let freq = 120;
+          if (multiplier === 2) freq = 200;
+          if (multiplier === 3) freq = 320;
+
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.08);
+
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+
+          if (multiplier > 1) {
+            const chime = this.ctx.createOscillator();
+            const cGain = this.ctx.createGain();
+            chime.type = 'sine';
+            chime.frequency.setValueAtTime(multiplier === 2 ? 650 : 880, now);
+            cGain.gain.setValueAtTime(0.12, now);
+            cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            chime.connect(cGain);
+            cGain.connect(this.ctx.destination);
+            chime.start(now);
+            chime.stop(now + 0.18);
+          }
+        } catch (e) {
+          console.warn('Audio play error', e);
+        }
+      }
+      playBust() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.linearRampToValueAtTime(70, now + 0.3);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+      playTargetSuccess() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(783.99, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+      playVictory() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.11;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        });
+      }
+    }
+    const sound = new SoundEngine();
+  </script>
+
+  <!-- FIREBASE REALTIME DATABASE MODULE -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBNBtkK187F1M0Nyn0YKIM7A69M5UgE9Jw",
+      authDomain: "dart-masters-ff61e.firebaseapp.com",
+      databaseURL: "https://dart-masters-ff61e-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "dart-masters-ff61e",
+      storageBucket: "dart-masters-ff61e.firebasestorage.app",
+      messagingSenderId: "634183568712",
+      appId: "1:634183568712:web:83f8345ecdb2170ba8777d"
+    };
+
+    class RealtimeDatabaseService {
+      constructor() {
+        this.db = null;
+        this.connected = false;
+        this.cloudSessions = [];
+        this.init();
+      }
+
+      init() {
+        try {
+          const app = initializeApp(firebaseConfig);
+          this.db = getDatabase(app);
+          this.connected = true;
+          this.listenForData();
+        } catch (e) {
+          console.warn('Firebase initialization note (offline/local fallback active):', e);
+          this.connected = false;
+        }
+      }
+
+      listenForData() {
+        if (!this.db) return;
+        try {
+          // Listen for matches
+          const matchRef = ref(this.db, 'matches');
+          onValue(matchRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+              this.updateSyncedCache(list, 'match');
+            }
+          }, (err) => {
+            console.warn('Realtime DB match sync warning:', err);
+          });
+
+          // Listen for training sessions
+          const trainRef = ref(this.db, 'training_sessions');
+          onValue(trainRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+              this.updateSyncedCache(list, 'training');
+            }
+          }, (err) => {
+            console.warn('Realtime DB training sync warning:', err);
+          });
+        } catch (err) {
+          console.warn('Listener error:', err);
+        }
+      }
+
+      updateSyncedCache(incomingList, type) {
+        let local = this.getLocalHistory();
+        // Remove old occurrences of that type and merge new
+        local = local.filter(item => item.type !== type);
+        local = [...incomingList, ...local];
+        // Sort newest first
+        local.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        localStorage.setItem('darts_history', JSON.stringify(local.slice(0, 150)));
+        if (window.statsCtrl && window.app && window.app.currentScreen === 'stats') {
+          window.statsCtrl.loadAndRender();
+        }
+      }
+
+      async saveSession(sessionRecord) {
+        sessionRecord.timestamp = Date.now();
+        // Save to local cache first
+        const local = this.getLocalHistory();
+        local.unshift(sessionRecord);
+        localStorage.setItem('darts_history', JSON.stringify(local.slice(0, 150)));
+
+        // Push to Firebase Realtime Database
+        if (this.db) {
+          try {
+            const path = sessionRecord.type === 'training' ? 'training_sessions' : 'matches';
+            const nodeRef = ref(this.db, path);
+            const newRef = push(nodeRef);
+            await set(newRef, sessionRecord);
+          } catch (e) {
+            console.warn('Error pushing to Firebase Realtime DB:', e);
+          }
+        }
+      }
+
+      getLocalHistory() {
+        try {
+          const raw = localStorage.getItem('darts_history');
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          return [];
+        }
+      }
+    }
+
+    window.rtDbService = new RealtimeDatabaseService();
+  </script>
+
+  <!-- GAME DATA & CHECKOUT ENGINE -->
+  <script>
+    // Around the World: Sector order starting clockwise from right of 20 (sector 1) -> 20 -> 25
+    const AROUND_THE_WORLD_SECTORS = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20, 25];
+
+    // Around the Clock: 1 to 20 then 25
+    const AROUND_THE_CLOCK_SECTORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25];
+
+    const CHECKOUTS = {
+      170: "T20 - T20 - Bull", 167: "T20 - T19 - Bull", 164: "T20 - T18 - Bull", 161: "T20 - T17 - Bull",
+      160: "T20 - T20 - D20",  158: "T20 - T20 - D19",  156: "T20 - T20 - D18",  154: "T20 - T18 - D20",
+      152: "T20 - T20 - D16",  150: "T20 - T18 - D18",  140: "T20 - T20 - D10",  130: "T20 - T20 - D5",
+      121: "T20 - T11 - D14",  100: "T20 - D20",        80: "T20 - D10",         70: "T10 - D20",
+      60: "S20 - D20",         50: "Bull (50)",         40: "D20",               36: "D18",
+      32: "D16",               24: "D12",               20: "D10",               16: "D8",
+      12: "D6",                10: "D5",                8: "D4",                 4: "D2",
+      2: "D1"
+    };
+
+    function getCheckoutTip(remainingScore, doubleOutRequired = true) {
+      if (!doubleOutRequired) {
+        if (remainingScore <= 20) return `S${remainingScore}`;
+        if (remainingScore <= 40 && remainingScore % 2 === 0) return `D${remainingScore / 2} o S${remainingScore}`;
+        if (remainingScore <= 60 && remainingScore % 3 === 0) return `T${remainingScore / 3}`;
+        return `Punta a T20 (60)`;
+      }
+
+      if (remainingScore > 170 || remainingScore <= 1 || [169, 168, 166, 165, 163, 162, 159].includes(remainingScore)) {
+        return "Nessun checkout immediato (Punta a T20 per abbassare)";
+      }
+
+      if (CHECKOUTS[remainingScore]) return CHECKOUTS[remainingScore];
+
+      if (remainingScore <= 40 && remainingScore % 2 === 0) {
+        return `D${remainingScore / 2}`;
+      }
+
+      if (remainingScore <= 50) {
+        if (remainingScore === 50) return "Bullseye (50)";
+        const single = remainingScore % 2 === 0 ? 2 : 1;
+        const targetDouble = (remainingScore - single) / 2;
+        return `S${single} - D${targetDouble}`;
+      }
+
+      return "Punta a settori singoli per preparare un doppio (es. D20 o D16)";
+    }
+  </script>
+
+  <!-- KEYPAD MANAGER -->
+  <script>
+    class KeypadManager {
+      constructor() {
+        this.currentMultiplier = 1; // 1 (S), 2 (D), 3 (T)
+      }
+
+      init() {
+        const grid = document.getElementById('keypadNumberGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let i = 1; i <= 20; i++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'py-3 sm:py-3.5 rounded-xl bg-gray-800/90 hover:bg-gray-700 active:bg-emerald-600 text-white font-extrabold text-sm sm:text-base border border-gray-700/70 transition-all tap-press shadow-sm flex items-center justify-center';
+          btn.textContent = i;
+          btn.onclick = () => {
+            const mult = this.currentMultiplier;
+            const prefix = mult === 3 ? 'T' : (mult === 2 ? 'D' : 'S');
+            this.registerHit(i, mult, `${prefix}${i}`);
+            // Reset to Single after every throw for swift typing
+            this.setMultiplier(1);
+          };
+          grid.appendChild(btn);
+        }
+      }
+
+      setMultiplier(m) {
+        this.currentMultiplier = m;
+        ['mulBtnS', 'mulBtnD', 'mulBtnT'].forEach(id => {
+          const b = document.getElementById(id);
+          if (b) {
+            b.className = 'px-3.5 py-1.5 text-xs font-black rounded-lg bg-transparent text-gray-300 hover:text-white transition-all';
+          }
+        });
+
+        const activeId = m === 3 ? 'mulBtnT' : (m === 2 ? 'mulBtnD' : 'mulBtnS');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) {
+          activeBtn.className = 'px-3.5 py-1.5 text-xs font-black rounded-lg bg-emerald-500 text-gray-950 transition-all';
+        }
+      }
+
+      hitMiss() {
+        this.registerHit(0, 1, 'MISS');
+        this.setMultiplier(1);
+      }
+
+      hitBull(val) {
+        // 25 is outer bull (Single), 50 is inner bullseye (Double)
+        const mult = val === 50 ? 2 : 1;
+        const label = val === 50 ? 'BULL 50 (D)' : 'BULL 25';
+        this.registerHit(val, mult, label);
+        this.setMultiplier(1);
+      }
+
+      registerHit(value, multiplier, label) {
+        sound.playDartThud(multiplier);
+        playCtrl.recordInstantDart({
+          value: value,
+          multiplier: multiplier,
+          score: value === 50 ? 50 : value * multiplier,
+          label: label
+        });
+      }
+    }
+    const keypad = new KeypadManager();
+  </script>
+
+  <!-- PLAY CONTROLLER & GAME RULES ENGINE -->
+  <script>
+    class PlayController {
+      constructor() {
+        this.sessionType = null; // 'training' | 'match'
+        this.matchType = null;   // 'classic' | 'world' | 'clock'
+        this.config = {};
+        this.currentDarts = [];  // max 3
+        this.turnHistory = [];
+        this.historySnapshots = []; // Snapshot stack for instant UNDO
+        this.activeTurn = 1;
+        this.activeTeamIdx = 0;
+        this.activePlayerIdx = { 0: 0, 1: 0 };
+        this.matchState = null;
+        this.trainState = null;
+      }
+
+      // Snapshot entire current state prior to each throw
+      takeSnapshot() {
+        const snap = {
+          sessionType: this.sessionType,
+          matchType: this.matchType,
+          activeTurn: this.activeTurn,
+          activeTeamIdx: this.activeTeamIdx,
+          activePlayerIdx: { ...this.activePlayerIdx },
+          currentDarts: JSON.parse(JSON.stringify(this.currentDarts)),
+          turnHistory: JSON.parse(JSON.stringify(this.turnHistory)),
+          matchState: this.matchState ? JSON.parse(JSON.stringify(this.matchState)) : null,
+          trainState: this.trainState ? JSON.parse(JSON.stringify(this.trainState)) : null
+        };
+        this.historySnapshots.push(snap);
+      }
+
+      // UNDO operation
+      undoLastDart() {
+        if (this.historySnapshots.length === 0) return;
+        const prev = this.historySnapshots.pop();
+
+        this.sessionType = prev.sessionType;
+        this.matchType = prev.matchType;
+        this.activeTurn = prev.activeTurn;
+        this.activeTeamIdx = prev.activeTeamIdx;
+        this.activePlayerIdx = prev.activePlayerIdx;
+        this.currentDarts = prev.currentDarts;
+        this.turnHistory = prev.turnHistory;
+        this.matchState = prev.matchState;
+        this.trainState = prev.trainState;
+
+        this.updateDartsSlotsUi();
+        this.renderArenaUi();
+        this.updateTurnHistoryUi();
+      }
+
+      // Record instant dart
+      recordInstantDart(dartObj) {
+        this.takeSnapshot();
+        this.currentDarts.push(dartObj);
+        this.updateDartsSlotsUi();
+
+        if (this.sessionType === 'training') {
+          this.applyTrainingDart(dartObj);
+        } else {
+          this.applyMatchDart(dartObj);
+        }
+      }
+
+      applyTrainingDart(dartObj) {
+        this.trainState.totalDarts++;
+
+        if (this.trainState.subMode === 'random') {
+          const target = this.trainState.currentTarget;
+          let isHit = false;
+
+          if (target.isBull) {
+            isHit = (dartObj.value === target.value);
+          } else {
+            isHit = (dartObj.value === target.number && dartObj.multiplier === target.multiplier);
+          }
+
+          if (isHit) {
+            sound.playTargetSuccess();
+            this.trainState.successfulTargets++;
+            this.trainState.streak++;
+            if (this.trainState.streak > this.trainState.bestStreak) {
+              this.trainState.bestStreak = this.trainState.streak;
+            }
+            // Generate immediate new target
+            trainCtrl.generateRandomTarget();
+          } else {
+            this.trainState.streak = 0;
+          }
+        }
+
+        // Automatic pass on 3 darts
+        if (this.currentDarts.length >= 3) {
+          const sum = this.currentDarts.reduce((a, d) => a + d.score, 0);
+          this.turnHistory.unshift({
+            turn: this.activeTurn,
+            player: this.trainState.playerName,
+            darts: [...this.currentDarts],
+            sum: sum,
+            time: new Date().toLocaleTimeString()
+          });
+          this.activeTurn++;
+          this.currentDarts = [];
+          this.updateDartsSlotsUi();
+          this.updateTurnHistoryUi();
+        }
+
+        this.renderArenaUi();
+      }
+
+      applyMatchDart(dartObj) {
+        const team = this.matchState.teams[this.activeTeamIdx];
+        const currentPlayer = team.players[this.activePlayerIdx[this.activeTeamIdx]];
+        let endTurnEarly = false;
+        let isBust = false;
+        let isWin = false;
+
+        if (this.matchType === 'classic') {
+          // X01 logic
+          const doubleOut = this.config.classicOut === 'double';
+          const newScore = team.score - dartObj.score;
+
+          if (newScore < 0) {
+            isBust = true;
+          } else if (doubleOut && newScore === 1) {
+            isBust = true;
+          } else if (newScore === 0) {
+            if (doubleOut) {
+              if (dartObj.multiplier === 2 || dartObj.value === 50) {
+                isWin = true;
+              } else {
+                isBust = true;
+              }
+            } else {
+              isWin = true;
+            }
+          }
+
+          if (isBust) {
+            sound.playBust();
+            const currentTurnSum = this.currentDarts.reduce((acc, d) => acc + d.score, 0);
+            team.score = team.score + currentTurnSum - dartObj.score; // Revert points
+            endTurnEarly = true;
+
+            this.turnHistory.unshift({
+              turn: this.activeTurn,
+              player: currentPlayer,
+              team: team.name,
+              darts: [...this.currentDarts],
+              sum: 0,
+              isBust: true,
+              remaining: team.score
+            });
+          } else {
+            team.score = newScore;
+            team.totalThrows++;
+            team.totalScored += dartObj.score;
+
+            if (isWin) {
+              this.handleMatchWin(team);
+              return;
+            }
+          }
+        } else {
+          // AROUND THE WORLD / AROUND THE CLOCK
+          // The sequence array has 21 sectors (0..19 are standard numbers, index 20 is 25 Bull)
+          const seq = this.matchType === 'world' ? AROUND_THE_WORLD_SECTORS : AROUND_THE_CLOCK_SECTORS;
+          const finalIndex = seq.length - 1; // Index 20 -> sector 25
+          const currentGoal = seq[team.currentStep];
+
+          // Check if dart hits current goal
+          let matched = false;
+          if (currentGoal === 25) {
+            // Must hit Outer Bull (25) or Bullseye (50) to win
+            matched = (dartObj.value === 25 || dartObj.value === 50);
+          } else {
+            matched = (dartObj.value === currentGoal);
+          }
+
+          if (matched) {
+            sound.playTargetSuccess();
+
+            if (currentGoal === 25) {
+              // Hit the final 25 / Bullseye: WIN!
+              team.currentStep = finalIndex;
+              this.handleMatchWin(team);
+              return;
+            } else {
+              // ADVANCING TOWARDS BULL:
+              // Multiplier rule: Single +1 step, Double +2 steps, Triple +3 steps.
+              // MANDATORY RULE: Any hit prior to 25 CANNOT WIN. It caps exactly at finalIndex (25).
+              const advance = dartObj.multiplier || 1;
+              let nextStep = team.currentStep + advance;
+
+              if (nextStep >= finalIndex) {
+                // Caps strictly at index 20 (Target 25 / Bull). Player MUST hit 25/Bull to win.
+                nextStep = finalIndex;
+              }
+
+              team.currentStep = nextStep;
+            }
+          }
+          team.totalThrows++;
+        }
+
+        // Automatic pass to next player/team after 3 darts or if bust occurred
+        if (this.currentDarts.length >= 3 || endTurnEarly) {
+          if (!isBust && this.matchType === 'classic') {
+            const turnSum = this.currentDarts.reduce((acc, d) => acc + d.score, 0);
+            this.turnHistory.unshift({
+              turn: this.activeTurn,
+              player: currentPlayer,
+              team: team.name,
+              darts: [...this.currentDarts],
+              sum: turnSum,
+              isBust: false,
+              remaining: team.score
+            });
+          } else if (this.matchType !== 'classic') {
+            const turnSum = this.currentDarts.reduce((acc, d) => acc + d.score, 0);
+            this.turnHistory.unshift({
+              turn: this.activeTurn,
+              player: currentPlayer,
+              team: team.name,
+              darts: [...this.currentDarts],
+              sum: turnSum,
+              currentStep: team.currentStep
+            });
+          }
+
+          // Cycle players
+          this.activePlayerIdx[this.activeTeamIdx] = (this.activePlayerIdx[this.activeTeamIdx] + 1) % team.players.length;
+          this.activeTeamIdx = this.activeTeamIdx === 0 ? 1 : 0;
+          this.activeTurn++;
+          this.currentDarts = [];
+          this.updateDartsSlotsUi();
+          this.updateTurnHistoryUi();
+        }
+
+        this.renderArenaUi();
+      }
+
+      updateDartsSlotsUi() {
+        const container = document.getElementById('currentDartsDisplay');
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (let i = 0; i < 3; i++) {
+          const dart = this.currentDarts[i];
+          const div = document.createElement('div');
+          if (dart) {
+            div.className = 'w-16 sm:w-20 h-11 rounded-xl bg-gray-800 border-2 border-emerald-500/80 flex flex-col items-center justify-center shadow-sm';
+            div.innerHTML = `<span class="text-xs font-black text-emerald-400">${dart.label}</span><span class="text-[10px] text-gray-400">${dart.score} pt</span>`;
+          } else {
+            div.className = 'w-16 sm:w-20 h-11 rounded-xl bg-gray-950/80 border border-dashed border-gray-700 flex items-center justify-center text-xs text-gray-500 font-bold';
+            div.textContent = `Freccia ${i + 1}`;
+          }
+          container.appendChild(div);
+        }
+      }
+
+      handleMatchWin(winningTeam) {
+        sound.playVictory();
+        if (window.confetti) {
+          window.confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
+        }
+        app.showSummaryScreen({
+          title: "VITTORIA!",
+          subtitle: `${winningTeam.name} ha vinto la sfida!`,
+          type: this.matchType,
+          winner: winningTeam.name,
+          teams: this.matchState.teams,
+          turns: this.activeTurn
+        });
+      }
+
+      abortMatch() {
+        if (confirm("Vuoi davvero abbandonare la partita in corso?")) {
+          app.navigate('home');
+        }
+      }
+
+      rematch() {
+        if (this.sessionType === 'training') {
+          trainCtrl.startSession();
+        } else {
+          matchCtrl.startMatch();
+        }
+      }
+
+      renderArenaUi() {
+        const header = document.getElementById('playHeader');
+        const targetCard = document.getElementById('liveTargetCard');
+        if (!header || !targetCard) return;
+
+        if (this.sessionType === 'training') {
+          header.innerHTML = `
+            <div class="flex items-center justify-between w-full">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <i data-lucide="crosshair" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold block">Allenamento (${this.trainState.subMode === 'random' ? 'Bersagli' : 'Libero'})</span>
+                  <span class="text-base font-black text-white">${this.trainState.playerName}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs font-semibold">
+                <div class="bg-gray-800/80 px-2.5 py-1 rounded-xl border border-gray-700">Dardi: <b class="text-white">${this.trainState.totalDarts}</b></div>
+                <div class="bg-gray-800/80 px-2.5 py-1 rounded-xl border border-gray-700">Streak: <b class="text-amber-400">${this.trainState.streak}</b></div>
+                <button onclick="trainCtrl.finishSession()" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-xl border border-red-500/40 transition-colors">Termina</button>
+              </div>
+            </div>
+          `;
+
+          if (this.trainState.subMode === 'random') {
+            const target = this.trainState.currentTarget;
+            targetCard.innerHTML = `
+              <span class="text-[11px] uppercase font-extrabold tracking-widest text-emerald-400 mb-1">BERSAGLIO DA COLPRIRE</span>
+              <div class="text-3xl sm:text-4xl font-black text-white tracking-tight my-1">
+                <span class="px-4 py-1 bg-emerald-950/80 border-2 border-emerald-500 rounded-2xl text-emerald-300 inline-block shadow-lg pulse-target">${target.name}</span>
+              </div>
+              <p class="text-[11px] text-gray-400">Tocca il tasto sul numpad appena lanci. Se lo colpisci cambia all'istante!</p>
+            `;
+          } else {
+            const avg = this.trainState.totalDarts > 0 
+              ? ((this.turnHistory.reduce((a, t) => a + t.sum, 0) / this.trainState.totalDarts) * 3).toFixed(1)
+              : '0.0';
+            targetCard.innerHTML = `
+              <span class="text-[11px] uppercase font-extrabold tracking-widest text-emerald-400 mb-0.5">TIRO LIBERO ATTIVO</span>
+              <div class="text-2xl sm:text-3xl font-black text-white my-1">Media 3 Dardi: <span class="text-emerald-400">${avg}</span></div>
+              <p class="text-[11px] text-gray-400">Ogni 3 freccette il turno si chiude automaticamente.</p>
+            `;
+          }
+        } else {
+          // MATCH MODE
+          const teamA = this.matchState.teams[0];
+          const teamB = this.matchState.teams[1];
+          const currentTeam = this.matchState.teams[this.activeTeamIdx];
+          const curPlayer = currentTeam.players[this.activePlayerIdx[this.activeTeamIdx]];
+          const isTeamA = this.activeTeamIdx === 0;
+
+          const seq = this.matchType === 'world' ? AROUND_THE_WORLD_SECTORS : AROUND_THE_CLOCK_SECTORS;
+          const totalSteps = seq.length; // 21
+
+          header.innerHTML = `
+            <div class="flex items-center justify-between w-full gap-2">
+              <!-- Team A -->
+              <div class="flex-1 p-2.5 rounded-2xl border transition-all ${isTeamA ? 'bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> ${teamA.name}</span>
+                  <span class="text-[10px] text-gray-400">${teamA.players.join(', ')}</span>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                  ${this.matchType === 'classic' ? teamA.score : `${teamA.currentStep + 1} / ${totalSteps}`}
+                </div>
+              </div>
+
+              <!-- Center VS / Turn -->
+              <div class="px-2 text-center">
+                <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest block">TURNO ${this.activeTurn}</span>
+                <span class="text-[11px] text-gray-400">Tira: <b class="text-white">${curPlayer}</b></span>
+              </div>
+
+              <!-- Team B -->
+              <div class="flex-1 p-2.5 rounded-2xl border transition-all text-right ${!isTeamA ? 'bg-red-500/15 border-red-500 shadow-md shadow-red-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
+                <div class="flex items-center justify-between flex-row-reverse">
+                  <span class="text-xs font-bold uppercase text-red-400 flex items-center gap-1">${teamB.name} <i data-lucide="shield" class="w-3 h-3"></i></span>
+                  <span class="text-[10px] text-gray-400">${teamB.players.join(', ')}</span>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                  ${this.matchType === 'classic' ? teamB.score : `${teamB.currentStep + 1} / ${totalSteps}`}
+                </div>
+              </div>
+            </div>
+          `;
+
+          // Live dynamic target
+          if (this.matchType === 'classic') {
+            const currentScore = currentTeam.score;
+            const doubleReq = this.config.classicOut === 'double';
+            const checkout = getCheckoutTip(currentScore, doubleReq);
+
+            targetCard.innerHTML = `
+              <div class="flex items-center justify-between w-full mb-1">
+                <span class="text-[11px] font-extrabold uppercase text-amber-400 flex items-center gap-1">
+                  <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Suggerimento Chiusura (${curPlayer}):
+                </span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full ${doubleReq ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">
+                  ${doubleReq ? 'Double Out Obbligatorio' : 'Finitura Diretta'}
+                </span>
+              </div>
+              <div class="text-lg sm:text-xl font-black text-amber-300 my-0.5">${checkout}</div>
+              <p class="text-[10px] text-gray-400">Punti rimasti a tabellone: <b class="text-white">${currentScore}</b></p>
+            `;
+          } else {
+            // Around World or Clock target
+            const curStep = currentTeam.currentStep;
+            const nextSector = seq[curStep] !== undefined ? seq[curStep] : 25;
+            const isFinalBull = (nextSector === 25 || curStep >= seq.length - 1);
+
+            if (isFinalBull) {
+              targetCard.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1">
+                    <i data-lucide="flame" class="w-3.5 h-3.5"></i> TIRO DIRETTO PER LA VITTORIA
+                  </span>
+                  <span class="text-[10px] text-gray-400">Tocca a: <b class="text-white">${curPlayer}</b></span>
+                </div>
+                <div class="inline-block px-5 py-2 rounded-2xl bg-red-950/80 border-2 border-red-500 text-red-300 text-2xl sm:text-3xl font-black my-1 pulse-target shadow-lg">
+                  🎯 BULL (25) o BULLSEYE (50)
+                </div>
+                <p class="text-[11px] text-amber-300 font-bold">DEVI colpire il Bull o Bullseye per vincere la partita!</p>
+              `;
+            } else {
+              targetCard.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400">
+                    ${this.matchType === 'world' ? 'AROUND THE WORLD (Senso Orario)' : 'AROUND THE CLOCK (1..20 + 25)'}
+                  </span>
+                  <span class="text-[10px] text-gray-400">Obiettivo per: <b class="text-white">${curPlayer}</b></span>
+                </div>
+                <div class="inline-block px-5 py-1.5 rounded-2xl bg-amber-500/20 border-2 border-amber-500 text-amber-300 text-2xl sm:text-3xl font-black my-1 shadow">
+                  SETTORE ${nextSector}
+                </div>
+                <p class="text-[10px] text-gray-400">Regola: <b>S (+1) &bull; D (+2) &bull; T (+3)</b>. Chiusura mandatoria al <b>25 / Bull</b> finale!</p>
+              `;
+            }
+          }
+        }
+        lucide.createIcons();
+      }
+
+      updateTurnHistoryUi() {
+        const list = document.getElementById('turnHistoryList');
+        if (!list) return;
+        if (this.turnHistory.length === 0) {
+          list.innerHTML = `<p class="text-gray-500 italic py-1 text-center">Nessun tiro registrato.</p>`;
+          return;
+        }
+
+        list.innerHTML = this.turnHistory.map(item => `
+          <div class="flex items-center justify-between p-1.5 rounded-xl bg-gray-800/40 border border-gray-700/50">
+            <div>
+              <span class="font-bold text-white text-[11px]">${item.player || 'Turno'}</span>
+              <span class="text-[10px] text-gray-400 ml-1">(${item.darts.map(d => d.label).join(', ')})</span>
+            </div>
+            <div class="text-right">
+              <span class="font-black ${item.isBust ? 'text-red-400 line-through' : 'text-emerald-400'} text-[11px]">
+                ${item.isBust ? 'BUST' : `+${item.sum}`}
+              </span>
+              ${item.remaining !== undefined ? `<span class="text-[9px] text-gray-400 block">rimasti: ${item.remaining}</span>` : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+    const playCtrl = new PlayController();
+  </script>
+
+  <!-- TRAINING CONTROLLER -->
+  <script>
+    class TrainingController {
+      constructor() {
+        this.subMode = 'random'; // 'random' | 'free'
+      }
+
+      setSubMode(mode) {
+        this.subMode = mode;
+        const btnR = document.getElementById('trainModeRandom');
+        const btnF = document.getElementById('trainModeFree');
+        const diffBlock = document.getElementById('trainTargetSettings');
+        const desc = document.getElementById('trainSubmodeDesc');
+
+        if (mode === 'random') {
+          btnR.className = 'p-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs text-center flex flex-col items-center gap-1';
+          btnF.className = 'p-3 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-semibold text-xs text-center flex flex-col items-center gap-1';
+          diffBlock.classList.remove('hidden');
+          desc.textContent = 'Un bersaglio casuale da centrare. Se lo colpisci, passa immediatamente a quello successivo!';
+        } else {
+          btnF.className = 'p-3 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs text-center flex flex-col items-center gap-1';
+          btnR.className = 'p-3 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-semibold text-xs text-center flex flex-col items-center gap-1';
+          diffBlock.classList.add('hidden');
+          desc.textContent = 'Lancia liberamente, calcola la tua media su 3 frecce e salva i tuoi progressi nel database.';
+        }
+      }
+
+      generateRandomTarget() {
+        const diff = document.getElementById('trainDifficulty').value;
+        const numbers = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+        const num = numbers[Math.floor(Math.random() * numbers.length)];
+
+        let multiplier = 1;
+        if (diff === 'doubles') multiplier = 2;
+        else if (diff === 'triples') multiplier = 3;
+        else if (diff === 'singles') multiplier = 1;
+        else {
+          const roll = Math.random();
+          if (roll < 0.45) multiplier = 1;
+          else if (roll < 0.75) multiplier = 2;
+          else if (roll < 0.95) multiplier = 3;
+          else {
+            playCtrl.trainState.currentTarget = {
+              isBull: true,
+              value: Math.random() > 0.5 ? 50 : 25,
+              name: Math.random() > 0.5 ? "Bullseye (50)" : "Outer Bull (25)"
+            };
+            return;
+          }
+        }
+
+        const multName = multiplier === 3 ? 'Triplo' : (multiplier === 2 ? 'Doppio' : 'Singolo');
+        playCtrl.trainState.currentTarget = {
+          isBull: false,
+          number: num,
+          multiplier: multiplier,
+          name: `${multName} ${num}`
+        };
+      }
+
+      startSession() {
+        const playerName = document.getElementById('trainPlayerName').value.trim() || 'Tiratore';
+        const saveDb = document.getElementById('trainSaveDb').checked;
+
+        playCtrl.sessionType = 'training';
+        playCtrl.matchType = null;
+        playCtrl.currentDarts = [];
+        playCtrl.turnHistory = [];
+        playCtrl.historySnapshots = [];
+        playCtrl.activeTurn = 1;
+        playCtrl.trainState = {
+          playerName: playerName,
+          subMode: this.subMode,
+          saveDb: saveDb,
+          totalDarts: 0,
+          successfulTargets: 0,
+          streak: 0,
+          bestStreak: 0,
+          currentTarget: null
+        };
+
+        if (this.subMode === 'random') {
+          this.generateRandomTarget();
+        }
+
+        app.navigate('play');
+        playCtrl.renderArenaUi();
+        playCtrl.updateDartsSlotsUi();
+        playCtrl.updateTurnHistoryUi();
+      }
+
+      finishSession() {
+        const state = playCtrl.trainState;
+        const totalScore = playCtrl.turnHistory.reduce((a, t) => a + t.sum, 0);
+        const avg3Darts = state.totalDarts > 0 ? ((totalScore / state.totalDarts) * 3).toFixed(1) : '0.0';
+        const accuracy = state.totalDarts > 0 ? Math.round((state.successfulTargets / state.totalDarts) * 100) : 0;
+
+        const record = {
+          type: 'training',
+          subMode: state.subMode,
+          playerName: state.playerName,
+          totalDarts: state.totalDarts,
+          successfulTargets: state.successfulTargets,
+          accuracy: accuracy,
+          bestStreak: state.bestStreak,
+          average3Darts: avg3Darts,
+          totalScore: totalScore,
+          date: new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        if (state.saveDb && window.rtDbService) {
+          window.rtDbService.saveSession(record);
+        }
+
+        app.showSummaryScreen({
+          title: "ALLENAMENTO CONCLUSO",
+          subtitle: `Sessione completata per ${state.playerName}`,
+          type: 'training',
+          subMode: state.subMode,
+          record: record
+        });
+      }
+    }
+    const trainCtrl = new TrainingController();
+  </script>
+
+  <!-- MATCH SETUP CONTROLLER -->
+  <script>
+    class MatchSetupController {
+      constructor() {
+        this.selectedType = 'classic';
+        this.selectedFormat = 1;
+      }
+
+      setType(t) {
+        this.selectedType = t;
+        ['btnModeClassic', 'btnModeWorld', 'btnModeClock'].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.className = 'p-2.5 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs text-center';
+        });
+
+        const activeId = t === 'classic' ? 'btnModeClassic' : (t === 'world' ? 'btnModeWorld' : 'btnModeClock');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) {
+          activeBtn.className = 'p-2.5 rounded-xl border border-amber-500 bg-amber-500/20 text-amber-300 font-bold text-xs text-center';
+        }
+
+        const classicOpts = document.getElementById('classicOptions');
+        const help = document.getElementById('gameTypeHelp');
+
+        if (t === 'classic') {
+          classicOpts.classList.remove('hidden');
+          help.textContent = 'Scala i punti fino a 0. Supporta Straight Out o Double Out.';
+        } else if (t === 'world') {
+          classicOpts.classList.add('hidden');
+          help.textContent = 'Giro orario da destra del 20 (1..20). S (+1), D (+2), T (+3). Per vincere è OBBLIGATORIO beccare 25 o Bullseye!';
+        } else {
+          classicOpts.classList.add('hidden');
+          help.textContent = 'Giro da 1 a 20. S (+1), D (+2), T (+3). Per vincere è OBBLIGATORIO beccare 25 o Bullseye!';
+        }
+      }
+
+      setFormat(f) {
+        this.selectedFormat = f;
+        [1, 2, 3].forEach(n => {
+          const btn = document.getElementById(`btnFormat${n}v${n}`);
+          if (btn) btn.className = 'py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs';
+        });
+        const active = document.getElementById(`btnFormat${f}v${f}`);
+        if (active) active.className = 'py-2 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs';
+
+        for (let i = 2; i <= 3; i++) {
+          const inpA = document.getElementById(`teamA_p${i}`);
+          const inpB = document.getElementById(`teamB_p${i}`);
+          if (i <= f) {
+            inpA.classList.remove('hidden');
+            inpB.classList.remove('hidden');
+          } else {
+            inpA.classList.add('hidden');
+            inpB.classList.add('hidden');
+          }
+        }
+      }
+
+      startMatch() {
+        const teamAPlayers = [];
+        const teamBPlayers = [];
+        for (let i = 1; i <= this.selectedFormat; i++) {
+          teamAPlayers.push(document.getElementById(`teamA_p${i}`).value.trim() || `Giocatore A${i}`);
+          teamBPlayers.push(document.getElementById(`teamB_p${i}`).value.trim() || `Giocatore B${i}`);
+        }
+
+        const startScore = parseInt(document.getElementById('classicStartingScore').value) || 501;
+        const outRule = document.getElementById('classicOutRule').value;
+
+        playCtrl.sessionType = 'match';
+        playCtrl.matchType = this.selectedType;
+        playCtrl.currentDarts = [];
+        playCtrl.turnHistory = [];
+        playCtrl.historySnapshots = [];
+        playCtrl.activeTurn = 1;
+        playCtrl.activeTeamIdx = 0;
+        playCtrl.activePlayerIdx = { 0: 0, 1: 0 };
+        playCtrl.config = {
+          classicStart: startScore,
+          classicOut: outRule,
+          format: this.selectedFormat
+        };
+
+        playCtrl.matchState = {
+          teams: [
+            {
+              id: 'teamA',
+              name: this.selectedFormat === 1 ? teamAPlayers[0] : 'Squadra A',
+              players: teamAPlayers,
+              score: startScore,
+              currentStep: 0,
+              totalThrows: 0,
+              totalScored: 0
+            },
+            {
+              id: 'teamB',
+              name: this.selectedFormat === 1 ? teamBPlayers[0] : 'Squadra B',
+              players: teamBPlayers,
+              score: startScore,
+              currentStep: 0,
+              totalThrows: 0,
+              totalScored: 0
+            }
+          ]
+        };
+
+        app.navigate('play');
+        playCtrl.renderArenaUi();
+        playCtrl.updateDartsSlotsUi();
+        playCtrl.updateTurnHistoryUi();
+      }
+    }
+    const matchCtrl = new MatchSetupController();
+  </script>
+
+  <!-- NAVIGATION & SUMMARY MANAGER -->
+  <script>
+    class AppManager {
+      constructor() {
+        this.currentScreen = 'home';
+      }
+
+      init() {
+        keypad.init();
+        this.navigate('home');
+        lucide.createIcons();
+      }
+
+      navigate(screenId) {
+        const screens = [
+          'screen-home',
+          'screen-training-config',
+          'screen-match-config',
+          'screen-play',
+          'screen-summary',
+          'screen-stats'
+        ];
+        screens.forEach(s => {
+          const el = document.getElementById(s);
+          if (el) el.classList.add('hidden');
+        });
+
+        const target = document.getElementById(`screen-${screenId}`);
+        if (target) {
+          target.classList.remove('hidden');
+          this.currentScreen = screenId;
+        }
+
+        if (screenId === 'stats') {
+          statsCtrl.loadAndRender();
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        lucide.createIcons();
+      }
+
+      startTrainingConfig() {
+        this.navigate('training-config');
+      }
+
+      startMatchConfig() {
+        this.navigate('match-config');
+      }
+
+      showSummaryScreen(data) {
+        this.navigate('summary');
+        const titleEl = document.getElementById('summaryTitle');
+        const subEl = document.getElementById('summarySubtitle');
+        const grid = document.getElementById('summaryStatsGrid');
+        const bdown = document.getElementById('summaryBreakdown');
+
+        titleEl.textContent = data.title;
+        subEl.textContent = data.subtitle;
+
+        if (data.type === 'training') {
+          const rec = data.record;
+          grid.innerHTML = `
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Dardi Totali</span>
+              <span class="text-lg font-black text-white">${rec.totalDarts}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Bersagli Centrati</span>
+              <span class="text-lg font-black text-emerald-400">${rec.successfulTargets}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Precisione</span>
+              <span class="text-lg font-black text-blue-400">${rec.accuracy}%</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Miglior Streak</span>
+              <span class="text-lg font-black text-amber-400">${rec.bestStreak}</span>
+            </div>
+          `;
+          bdown.innerHTML = `<p>Allenamento registrato con successo. Media 3 dardi: <b>${rec.average3Darts}</b> punti.</p>`;
+        } else {
+          const tA = data.teams[0];
+          const tB = data.teams[1];
+          const totThrows = tA.totalThrows + tB.totalThrows;
+
+          grid.innerHTML = `
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Vincitore</span>
+              <span class="text-base font-black text-emerald-400">${data.winner}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Turni Totali</span>
+              <span class="text-base font-black text-white">${data.turns}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Frecce Lanciate</span>
+              <span class="text-base font-black text-blue-400">${totThrows}</span>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+              <span class="text-gray-400 text-[10px] uppercase block">Modalità</span>
+              <span class="text-base font-black text-amber-400 uppercase">${data.type}</span>
+            </div>
+          `;
+
+          bdown.innerHTML = `
+            <div class="space-y-1">
+              <p><b>${tA.name}</b>: ${tA.totalThrows} frecce tirate &bull; ${tA.totalScored} punti</p>
+              <p><b>${tB.name}</b>: ${tB.totalThrows} frecce tirate &bull; ${tB.totalScored} punti</p>
+            </div>
+          `;
+
+          if (window.rtDbService) {
+            window.rtDbService.saveSession({
+              type: 'match',
+              matchType: data.type,
+              winner: data.winner,
+              teamA: tA.name,
+              teamB: tB.name,
+              totalTurns: data.turns,
+              date: new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            });
+          }
+        }
+      }
+    }
+    const app = new AppManager();
+  </script>
+
+  <!-- STATISTICS & CLOUD HISTORY CONTROLLER -->
+  <script>
+    class StatisticsController {
+      constructor() {
+        this.activeFilter = 'all';
+      }
+
+      filter(f) {
+        this.activeFilter = f;
+        ['tabStatsAll', 'tabStatsTrain', 'tabStatsMatch'].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.className = 'px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 font-semibold text-xs';
+        });
+
+        const activeId = f === 'all' ? 'tabStatsAll' : (f === 'training' ? 'tabStatsTrain' : 'tabStatsMatch');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) activeBtn.className = 'px-3 py-1.5 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs';
+
+        this.loadAndRender();
+      }
+
+      loadAndRender() {
+        const history = window.rtDbService ? window.rtDbService.getLocalHistory() : [];
+        const container = document.getElementById('statsHistoryList');
+        if (!container) return;
+
+        let totDarts = 0;
+        let totAccuracySum = 0;
+        let trainCount = 0;
+
+        history.forEach(item => {
+          if (item.type === 'training') {
+            totDarts += (item.totalDarts || 0);
+            if (item.accuracy !== undefined) {
+              totAccuracySum += item.accuracy;
+              trainCount++;
+            }
+          }
+        });
+
+        document.getElementById('statTotSessions').textContent = history.length;
+        document.getElementById('statTotDarts').textContent = totDarts;
+        document.getElementById('statAccuracy').textContent = trainCount > 0 ? Math.round(totAccuracySum / trainCount) + '%' : '0%';
+
+        const filtered = history.filter(item => {
+          if (this.activeFilter === 'training') return item.type === 'training';
+          if (this.activeFilter === 'matches') return item.type === 'match';
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = `
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 text-center text-gray-500 text-xs">
+              <i data-lucide="inbox" class="w-7 h-7 mx-auto mb-1.5 opacity-40"></i>
+              Nessuna sessione trovata in cronologia.
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        container.innerHTML = filtered.map(item => {
+          const isTrain = item.type === 'training';
+          return `
+            <div class="bg-gray-900/80 border border-gray-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl ${isTrain ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
+                  <i data-lucide="${isTrain ? 'crosshair' : 'trophy'}" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-white">${isTrain ? `Allenamento (${item.playerName || 'Solo'})` : `Partita ${item.matchType?.toUpperCase() || ''}`}</h4>
+                  <p class="text-[10px] text-gray-400">${item.date || 'Recente'} &bull; ${isTrain ? `${item.totalDarts || 0} dardi &bull; Acc: ${item.accuracy || 0}%` : `Vincitore: ${item.winner}`}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${isTrain ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                  ${isTrain ? `Avg 3d: ${item.average3Darts || '0'}` : `${item.teamA} vs ${item.teamB}`}
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+        lucide.createIcons();
+      }
+
+      clearHistory() {
+        if (confirm("Vuoi cancellare lo storico locale? (I dati salvati su Firebase rimarranno sul cloud)")) {
+          localStorage.removeItem('darts_history');
+          this.loadAndRender();
+        }
+      }
+    }
+    const statsCtrl = new StatisticsController();
+
+    window.onload = function() {
+      app.init();
+    };
+  </script>
+</body>
+</html>
