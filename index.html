@@ -260,11 +260,11 @@
             </div>
             <p id="gameTypeHelp" class="text-[11px] text-gray-400 mt-1.5">Scala i punti fino a 0. Supporta Straight Out o Double Out.</p>
           </div>
-
-          <!-- Format Team selection (1v1, 2v2, 3v3) -->
+          <!-- Format Team selection (Solo, 1v1, 2v2, 3v3) -->
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Formato Partita</label>
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
+              <button type="button" id="btnFormatSolo" onclick="matchCtrl.setFormat('solo')" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">Solo</button>
               <button type="button" id="btnFormat1v1" onclick="matchCtrl.setFormat(1)" class="py-2 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs">1 vs 1</button>
               <button type="button" id="btnFormat2v2" onclick="matchCtrl.setFormat(2)" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">2 vs 2</button>
               <button type="button" id="btnFormat3v3" onclick="matchCtrl.setFormat(3)" class="py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs">3 vs 3</button>
@@ -297,13 +297,13 @@
           <div class="space-y-2">
             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400">Giocatori</label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div class="space-y-1.5">
-                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra A</span>
+              <div id="teamABox" class="space-y-1.5">
+                <span id="teamALabel" class="text-[11px] font-bold text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra A</span>
                 <input type="text" id="teamA_p1" placeholder="Giocatore A1" value="Tiratore A" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs">
                 <input type="text" id="teamA_p2" placeholder="Giocatore A2" value="Compagno A2" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
                 <input type="text" id="teamA_p3" placeholder="Giocatore A3" value="Compagno A3" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
               </div>
-              <div class="space-y-1.5">
+              <div id="teamBBox" class="space-y-1.5">
                 <span class="text-[11px] font-bold text-red-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> Squadra B</span>
                 <input type="text" id="teamB_p1" placeholder="Giocatore B1" value="Tiratore B" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs">
                 <input type="text" id="teamB_p2" placeholder="Giocatore B2" value="Compagno B2" class="w-full bg-gray-800 border border-gray-700 text-white rounded-xl p-2 text-xs hidden">
@@ -1312,7 +1312,12 @@
           }
 
           this.activePlayerIdx[this.activeTeamIdx] = (this.activePlayerIdx[this.activeTeamIdx] + 1) % team.players.length;
-          this.activeTeamIdx = this.activeTeamIdx === 0 ? 1 : 0;
+          // Se la partita è in modalità Solo, il turno successivo appartiene sempre allo stesso giocatore
+          if (this.matchState.isSolo) {
+            this.activeTeamIdx = 0;
+          } else {
+            this.activeTeamIdx = this.activeTeamIdx === 0 ? 1 : 0;
+          }
           this.activeTurn++;
           this.currentDarts = [];
           this.updateDartsSlotsUi();
@@ -1414,6 +1419,7 @@
           }
         } else {
           // MATCH MODE
+          const isSolo = !!this.matchState.isSolo;
           const teamA = this.matchState.teams[0];
           const teamB = this.matchState.teams[1];
           const currentTeam = this.matchState.teams[this.activeTeamIdx];
@@ -1423,37 +1429,58 @@
           const seq = this.matchType === 'world' ? AROUND_THE_WORLD_SECTORS : AROUND_THE_CLOCK_SECTORS;
           const totalSteps = seq.length; // 21
 
-          header.innerHTML = `
-            <div class="flex items-center justify-between w-full gap-2">
-              <!-- Team A -->
-              <div class="flex-1 p-2.5 rounded-2xl border transition-all ${isTeamA ? 'bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> ${teamA.name}</span>
-                  <span class="text-[10px] text-gray-400">${teamA.players.join(', ')}</span>
+          if (isSolo) {
+            header.innerHTML = `
+              <div class="flex items-center justify-between w-full gap-2">
+                <div class="flex-1 p-2.5 rounded-2xl border bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> ${teamA.name}</span>
+                    <span class="text-[10px] text-gray-400">Modalità Solo</span>
+                  </div>
+                  <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                    ${this.matchType === 'classic' ? teamA.score : `${teamA.currentStep + 1} / ${totalSteps}`}
+                  </div>
                 </div>
-                <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
-                  ${this.matchType === 'classic' ? teamA.score : `${teamA.currentStep + 1} / ${totalSteps}`}
-                </div>
-              </div>
 
-              <!-- Center VS / Turn -->
-              <div class="px-2 text-center">
-                <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest block">TURNO ${this.activeTurn}</span>
-                <span class="text-[11px] text-gray-400">Tira: <b class="text-white">${curPlayer}</b></span>
+                <div class="px-3 text-center">
+                  <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest block">TURNO ${this.activeTurn}</span>
+                  <span class="text-[11px] text-gray-400">Tiri: <b class="text-white">${teamA.totalThrows}</b></span>
+                </div>
               </div>
+            `;
+          } else {
+            header.innerHTML = `
+              <div class="flex items-center justify-between w-full gap-2">
+                <!-- Team A -->
+                <div class="flex-1 p-2.5 rounded-2xl border transition-all ${isTeamA ? 'bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase text-emerald-400 flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> ${teamA.name}</span>
+                    <span class="text-[10px] text-gray-400">${teamA.players.join(', ')}</span>
+                  </div>
+                  <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                    ${this.matchType === 'classic' ? teamA.score : `${teamA.currentStep + 1} / ${totalSteps}`}
+                  </div>
+                </div>
 
-              <!-- Team B -->
-              <div class="flex-1 p-2.5 rounded-2xl border transition-all text-right ${!isTeamA ? 'bg-red-500/15 border-red-500 shadow-md shadow-red-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
-                <div class="flex items-center justify-between flex-row-reverse">
-                  <span class="text-xs font-bold uppercase text-red-400 flex items-center gap-1">${teamB.name} <i data-lucide="shield" class="w-3 h-3"></i></span>
-                  <span class="text-[10px] text-gray-400">${teamB.players.join(', ')}</span>
+                <!-- Center VS / Turn -->
+                <div class="px-2 text-center">
+                  <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest block">TURNO ${this.activeTurn}</span>
+                  <span class="text-[11px] text-gray-400">Tira: <b class="text-white">${curPlayer}</b></span>
                 </div>
-                <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
-                  ${this.matchType === 'classic' ? teamB.score : `${teamB.currentStep + 1} / ${totalSteps}`}
+
+                <!-- Team B -->
+                <div class="flex-1 p-2.5 rounded-2xl border transition-all text-right ${!isTeamA ? 'bg-red-500/15 border-red-500 shadow-md shadow-red-500/20' : 'bg-gray-800/40 border-gray-800 opacity-60'}">
+                  <div class="flex items-center justify-between flex-row-reverse">
+                    <span class="text-xs font-bold uppercase text-red-400 flex items-center gap-1">${teamB.name} <i data-lucide="shield" class="w-3 h-3"></i></span>
+                    <span class="text-[10px] text-gray-400">${teamB.players.join(', ')}</span>
+                  </div>
+                  <div class="text-2xl sm:text-3xl font-black text-white mt-0.5">
+                    ${this.matchType === 'classic' ? teamB.score : `${teamB.currentStep + 1} / ${totalSteps}`}
+                  </div>
                 </div>
               </div>
-            </div>
-          `;
+            `;
+          }
 
           if (this.matchType === 'classic') {
             const currentScore = currentTeam.score;
@@ -1667,7 +1694,7 @@
     class MatchSetupController {
       constructor() {
         this.selectedType = 'classic';
-        this.selectedFormat = 1;
+        this.selectedFormat = 1; // 'solo' | 1 | 2 | 3
       }
 
       setType(t) {
@@ -1700,32 +1727,55 @@
 
       setFormat(f) {
         this.selectedFormat = f;
-        [1, 2, 3].forEach(n => {
-          const btn = document.getElementById(`btnFormat${n}v${n}`);
+        ['Solo', '1v1', '2v2', '3v3'].forEach(name => {
+          const btn = document.getElementById(`btnFormat${name}`);
           if (btn) btn.className = 'py-2 rounded-xl border border-gray-700 bg-gray-800 text-gray-300 font-bold text-xs';
         });
-        const active = document.getElementById(`btnFormat${f}v${f}`);
+
+        const activeBtnId = f === 'solo' ? 'btnFormatSolo' : `btnFormat${f}v${f}`;
+        const active = document.getElementById(activeBtnId);
         if (active) active.className = 'py-2 rounded-xl border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold text-xs';
 
-        for (let i = 2; i <= 3; i++) {
-          const inpA = document.getElementById(`teamA_p${i}`);
-          const inpB = document.getElementById(`teamB_p${i}`);
-          if (i <= f) {
-            inpA.classList.remove('hidden');
-            inpB.classList.remove('hidden');
-          } else {
-            inpA.classList.add('hidden');
-            inpB.classList.add('hidden');
+        const teamBBox = document.getElementById('teamBBox');
+        const teamALabel = document.getElementById('teamALabel');
+
+        if (f === 'solo') {
+          teamBBox.classList.add('hidden');
+          if (teamALabel) teamALabel.innerHTML = '<i data-lucide="user" class="w-3 h-3"></i> Giocatore (Solo)';
+          ['teamA_p2', 'teamA_p3'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+          });
+        } else {
+          teamBBox.classList.remove('hidden');
+          if (teamALabel) teamALabel.innerHTML = '<i data-lucide="shield" class="w-3 h-3"></i> Squadra A';
+          for (let i = 2; i <= 3; i++) {
+            const inpA = document.getElementById(`teamA_p${i}`);
+            const inpB = document.getElementById(`teamB_p${i}`);
+            if (i <= f) {
+              inpA.classList.remove('hidden');
+              inpB.classList.remove('hidden');
+            } else {
+              inpA.classList.add('hidden');
+              inpB.classList.add('hidden');
+            }
           }
         }
+        lucide.createIcons();
       }
 
       startMatch() {
+        const isSolo = (this.selectedFormat === 'solo');
         const teamAPlayers = [];
         const teamBPlayers = [];
-        for (let i = 1; i <= this.selectedFormat; i++) {
-          teamAPlayers.push(document.getElementById(`teamA_p${i}`).value.trim() || `Giocatore A${i}`);
-          teamBPlayers.push(document.getElementById(`teamB_p${i}`).value.trim() || `Giocatore B${i}`);
+
+        if (isSolo) {
+          teamAPlayers.push(document.getElementById('teamA_p1').value.trim() || 'Tiratore');
+        } else {
+          for (let i = 1; i <= this.selectedFormat; i++) {
+            teamAPlayers.push(document.getElementById(`teamA_p${i}`).value.trim() || `Giocatore A${i}`);
+            teamBPlayers.push(document.getElementById(`teamB_p${i}`).value.trim() || `Giocatore B${i}`);
+          }
         }
 
         const startScore = parseInt(document.getElementById('classicStartingScore').value) || 501;
@@ -1745,27 +1795,33 @@
           format: this.selectedFormat
         };
 
+        const teamsList = [
+          {
+            id: 'teamA',
+            name: isSolo ? teamAPlayers[0] : (this.selectedFormat === 1 ? teamAPlayers[0] : 'Squadra A'),
+            players: teamAPlayers,
+            score: startScore,
+            currentStep: 0,
+            totalThrows: 0,
+            totalScored: 0
+          }
+        ];
+
+        if (!isSolo) {
+          teamsList.push({
+            id: 'teamB',
+            name: this.selectedFormat === 1 ? teamBPlayers[0] : 'Squadra B',
+            players: teamBPlayers,
+            score: startScore,
+            currentStep: 0,
+            totalThrows: 0,
+            totalScored: 0
+          });
+        }
+
         playCtrl.matchState = {
-          teams: [
-            {
-              id: 'teamA',
-              name: this.selectedFormat === 1 ? teamAPlayers[0] : 'Squadra A',
-              players: teamAPlayers,
-              score: startScore,
-              currentStep: 0,
-              totalThrows: 0,
-              totalScored: 0
-            },
-            {
-              id: 'teamB',
-              name: this.selectedFormat === 1 ? teamBPlayers[0] : 'Squadra B',
-              players: teamBPlayers,
-              score: startScore,
-              currentStep: 0,
-              totalThrows: 0,
-              totalScored: 0
-            }
-          ]
+          isSolo: isSolo,
+          teams: teamsList
         };
 
         app.navigate('play');
@@ -1859,13 +1915,14 @@
           `;
           bdown.innerHTML = `<p>Allenamento registrato con successo. Media 3 dardi: <b>${rec.average3Darts}</b> punti.</p>`;
         } else {
+          const isSolo = !!data.teams[0] && !data.teams[1];
           const tA = data.teams[0];
           const tB = data.teams[1];
-          const totThrows = tA.totalThrows + tB.totalThrows;
+          const totThrows = tA.totalThrows + (tB ? tB.totalThrows : 0);
 
           grid.innerHTML = `
             <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
-              <span class="text-gray-400 text-[10px] uppercase block">Vincitore</span>
+              <span class="text-gray-400 text-[10px] uppercase block">${isSolo ? 'Giocatore' : 'Vincitore'}</span>
               <span class="text-base font-black text-emerald-400">${data.winner}</span>
             </div>
             <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
@@ -1878,24 +1935,27 @@
             </div>
             <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800">
               <span class="text-gray-400 text-[10px] uppercase block">Modalità</span>
-              <span class="text-base font-black text-amber-400 uppercase">${data.type}</span>
+              <span class="text-base font-black text-amber-400 uppercase">${data.type} ${isSolo ? '(SOLO)' : ''}</span>
             </div>
           `;
 
-          bdown.innerHTML = `
-            <div class="space-y-1">
-              <p><b>${tA.name}</b>: ${tA.totalThrows} frecce tirate &bull; ${tA.totalScored} punti</p>
-              <p><b>${tB.name}</b>: ${tB.totalThrows} frecce tirate &bull; ${tB.totalScored} punti</p>
-            </div>
-          `;
+          bdown.innerHTML = isSolo
+            ? `<div class="space-y-1"><p><b>${tA.name}</b>: completato in ${tA.totalThrows} frecce &bull; ${tA.totalScored} punti totalizzati</p></div>`
+            : `
+              <div class="space-y-1">
+                <p><b>${tA.name}</b>: ${tA.totalThrows} frecce tirate &bull; ${tA.totalScored} punti</p>
+                <p><b>${tB.name}</b>: ${tB.totalThrows} frecce tirate &bull; ${tB.totalScored} punti</p>
+              </div>
+            `;
 
           if (window.rtDbService) {
             window.rtDbService.saveSession({
               type: 'match',
               matchType: data.type,
+              isSolo: isSolo,
               winner: data.winner,
               teamA: tA.name,
-              teamB: tB.name,
+              teamB: isSolo ? null : tB.name,
               totalTurns: data.turns,
               date: new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
             });
